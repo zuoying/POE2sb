@@ -1,0 +1,55 @@
+name: Build Firmware
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install ARM GCC
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
+
+    - name: Install CMake & Ninja
+      run: sudo apt-get update && sudo apt-get install -y cmake ninja-build
+
+    - name: Set up Pico SDK
+      run: |
+        git clone --depth 1 --branch 2.0.0 https://github.com/raspberrypi/pico-sdk.git
+        cd pico-sdk
+        git submodule update --init --recursive
+        echo "PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk" >> $GITHUB_ENV
+
+    - name: Set up Pico-PIO-USB
+      run: |
+        git clone https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
+        echo "PICO_PIO_USB_PATH=$GITHUB_WORKSPACE/Pico-PIO-USB" >> $GITHUB_ENV
+
+    - name: Configure CMake
+      run: |
+        mkdir build
+        cd build
+        cmake -G Ninja -DPICO_PLATFORM=rp2350 -DPICO_BOARD=pico2 ..
+
+    - name: Build
+      run: |
+        cd build
+        ninja
+
+    - name: Upload UF2 Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: poe2gamepad-firmware
+        path: build/*.uf2
