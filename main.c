@@ -1,0 +1,205 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "pico/stdlib.h"
+#include "pico/rand.h"
+#include "hardware/pio.h"
+#include "hardware/dma.h"
+#include "hardware/clocks.h"
+
+// 必须在 tusb.h 之前包含 pio_usb.h
+#include "pio_usb.h"
+#include "tusb.h"
+
+#include "usb_descriptors.h"
+
+// ------------------------------------------------------------------
+// 全局变量与枚举
+// ------------------------------------------------------------------
+typedef enum {
+    MODE_SYNC = 0,    // 绿灯：同步模式
+    MODE_MAIN_ONLY,   // 蓝灯：仅主角色 (手柄1)
+    MODE_SUB_ONLY,    // 红灯：仅副角色 (手柄2)
+    MODE_COUNT
+} sync_mode_t;
+
+static sync_mode_t current_mode = MODE_SYNC;
+static bool last_toggle_state = false;
+static xbox_report_t host_report;      // 从真实手柄读取的原始数据
+static bool host_connected = false;
+
+typedef struct {
+    uint32_t last_update_ms;
+    uint32_t delay_ms;
+    xbox_report_t delayed_report;
+} anti_detect_t;
+
+static anti_detect_t ad_ctrl1;
+static anti_detect_t ad_ctrl2;
+
+// ------------------------------------------------------------------
+// WS2812 RGB LED 驱动
+// ------------------------------------------------------------------
+#define WS2812_PIN 16
+
+static inline void ws2812_put_pixel(uint32_t pixel_grb) {
+    pio_sm_put_blocking(pio0, 0, pixel_grb << 8u);
+}
+
+static inline uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b) {
+    return ((uint32_t)(r) << 8) | ((uint32_t)(g) << 16) | (uint32_t)(b);
+}
+
+void init_ws2812(void) {
+    static const uint16_t ws2812_instructions[] = {
+        0x6221, // out x, 1 side 0 [2]
+        0x1123, // jmp !x, 3 side 1 [1]
+        0x1400, // jmp 0 side 1 [4]
+        0xa442, // nop side 0 [4]
+    };
+    static const struct pio_program ws2812_program = {
+        .instructions = ws2812_instructions,
+        .length = 4,
+        .origin = -1,
+        .pio_version = 1,
+    };
+    uint offset = pio_add_program(pio0, &ws2812_program);
+    pio_gpio_init(pio0, WS2812_PIN);
+    pio_sm_set_consecutive_pindirs(pio0, 0, WS2812_PIN, 1, true);
+    pio_sm_config c = pio_get_default_sm_config();
+    sm_config_set_wrap(&c, offset + 0, offset + 3);
+    sm_config_set_sideset(&c, 1, false, false);
+    sm_config_set_sideset_pins(&c, WS2812_PIN);
+    sm_config_set_out_shift(&c, false, true, 24);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+    float div = clock_get_hz(clk_sys) / (800000.0f * 10.0f);
+    sm_config_set_clkdiv(&c, div);
+    pio_sm_init(pio0, 0, offset, &c);
+    pio_sm_set_enabled(pio0, 0, true);
+}
+
+void update_led_indicator(void) {
+    switch (current_mode) {
+        case MODE_SYNC:      ws2812_put_pixel(urgb_u32(0, 255, 0)); break;
+        case MODE_MAIN_ONLY: ws2812_put_pixel(urgb_u32(0, 0, 255)); break;
+        case MODE_SUB_ONLY:  ws2812_put_pixel(urgb_u32(255, 0, 0)); break;
+        default: break;
+    }
+}
+
+// ------------------------------------------------------------------
+// 核心逻辑
+// ------------------------------------------------------------------
+static int16_t apply_stick_offset(int16_t value) {
+    if (value == 0) return 0;
+    int16_t offset = (int16_t)((get_rand_32() % 9) - 4);
+    int32_t new_val = (int32_t)value + offset;
+    return (int16_t)(new_val > 32767 ? 32767 : (new_val < -32768 ? -32768 : new_val));
+}
+
+static uint8_t apply_trigger_offset(uint8_t value) {
+    if (value == 0) return 0;
+    int16_t offset = (int16_t)((get_rand_32() % 5) - 2);
+    int16_t new_val = (int16_t)value + offset;
+    return (uint8_t)(new_val > 255 ? 255 : (new_val < 0 ? 0 : new_val));
+}
+
+void process_and_send_reports(void) {
+    uint32_t now = to_ms_since_boot(get_absolute_time());
+    bool current_toggle = (host_report.buttons & (XBOX_BTN_BACK | XBOX_BTN_START)) == (XBOX_BTN_BACK | XBOX_BTN_START);
+    if (current_toggle && !last_toggle_state) {
+        current_mode = (current_mode + 1) % MODE_COUNT;
+        update_led_indicator();
+    }
+    last_toggle_state = current_toggle;
+
+    if (now - ad_ctrl1.last_update_ms >= ad_ctrl1.delay_ms) {
+        if (current_mode == MODE_SYNC || current_mode == MODE_MAIN_ONLY) {
+            ad_ctrl1.delayed_report = host_report;
+            ad_ctrl1.delayed_report.left_stick_x = apply_stick_offset(host_report.left_stick_x);
+            ad_ctrl1.delayed_report.left_stick_y = apply_stick_offset(host_report.left_stick_y);
+            ad_ctrl1.delayed_report.right_stick_x = apply_stick_offset(host_report.right_stick_x);
+            ad_ctrl1.delayed_report.right_stick_y = apply_stick_offset(host_report.right_stick_y);
+            ad_ctrl1.delayed_report.left_trigger = apply_trigger_offset(host_report.left_trigger);
+            ad_ctrl1.delayed_report.right_trigger = apply_trigger_offset(host_report.right_trigger);
+        } else {
+            memset(&ad_ctrl1.delayed_report, 0, sizeof(xbox_report_t));
+            ad_ctrl1.delayed_report.report_size = 0x14;
+        }
+        ad_ctrl1.delay_ms = (get_rand_32() % 6) + 1;
+        ad_ctrl1.last_update_ms = now;
+        if (tud_ready()) {
+            tud_vendor_n_write(0, &ad_ctrl1.delayed_report, sizeof(xbox_report_t));
+            tud_vendor_n_flush(0);
+        }
+    }
+
+    if (now - ad_ctrl2.last_update_ms >= ad_ctrl2.delay_ms) {
+        if (current_mode == MODE_SYNC || current_mode == MODE_SUB_ONLY) {
+            ad_ctrl2.delayed_report = host_report;
+            ad_ctrl2.delayed_report.left_stick_x = apply_stick_offset(host_report.left_stick_x);
+            ad_ctrl2.delayed_report.left_stick_y = apply_stick_offset(host_report.left_stick_y);
+            ad_ctrl2.delayed_report.right_stick_x = apply_stick_offset(host_report.right_stick_x);
+            ad_ctrl2.delayed_report.right_stick_y = apply_stick_offset(host_report.right_stick_y);
+            ad_ctrl2.delayed_report.left_trigger = apply_trigger_offset(host_report.left_trigger);
+            ad_ctrl2.delayed_report.right_trigger = apply_trigger_offset(host_report.right_trigger);
+        } else {
+            memset(&ad_ctrl2.delayed_report, 0, sizeof(xbox_report_t));
+            ad_ctrl2.delayed_report.report_size = 0x14;
+        }
+        ad_ctrl2.delay_ms = (get_rand_32() % 6) + 1;
+        ad_ctrl2.last_update_ms = now;
+        if (tud_ready()) {
+            tud_vendor_n_write(1, &ad_ctrl2.delayed_report, sizeof(xbox_report_t));
+            tud_vendor_n_flush(1);
+        }
+    }
+}
+
+// ------------------------------------------------------------------
+// USB Host 回调
+// ------------------------------------------------------------------
+void tuh_mount_cb(uint8_t dev_addr) {
+    host_connected = true;
+}
+
+void tuh_umount_cb(uint8_t dev_addr) {
+    (void)dev_addr;
+    host_connected = false;
+    memset(&host_report, 0, sizeof(xbox_report_t));
+}
+
+// 替换为标准的 HID 报告接收回调
+void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
+    (void)instance;
+    if (len >= sizeof(xbox_report_t)) {
+        memcpy(&host_report, report, sizeof(xbox_report_t));
+        process_and_send_reports();
+    }
+}
+
+// ------------------------------------------------------------------
+// 主函数
+// ------------------------------------------------------------------
+int main(void) {
+    stdio_init_all();
+    init_ws2812();
+    update_led_indicator();
+
+    pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
+    pio_cfg.pin_dp = 12;
+    tuh_configure(1, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
+    tusb_init();
+
+    while (1) {
+        tud_task();
+        tuh_task();
+    }
+    return 0;
+}
+
+void tud_vendor_rx_cb(uint8_t itf) {
+    uint8_t buf[32];
+    tud_vendor_n_read(itf, buf, sizeof(buf));
+}
