@@ -13,6 +13,7 @@
 #include "tusb.h"
 
 #include "usb_descriptors.h"
+#include "ws2812.pio.h"
 
 // UART 调试输出
 #define DEBUG_printf printf
@@ -46,77 +47,33 @@ static anti_detect_t ad_ctrl2 = {0, 1, {0}};
 // LED 定义
 // ------------------------------------------------------------------
 #define WS2812_PIN 16
+#define WS2812_FREQ 800000
 
 // ------------------------------------------------------------------
-// 简单 LED 测试 - 先验证 LED 是否工作
+// WS2812 RGB LED 驱动 (官方方法)
 // ------------------------------------------------------------------
-void blink_led_test(void) {
-    gpio_init(WS2812_PIN);
-    gpio_set_dir(WS2812_PIN, GPIO_OUT);
-
-    for (int i = 0; i < 5; i++) {
-        gpio_put(WS2812_PIN, 1);
-        sleep_ms(200);
-        gpio_put(WS2812_PIN, 0);
-        sleep_ms(200);
-    }
-}
-
-// ------------------------------------------------------------------
-// WS2812 RGB LED 驱动
-// ------------------------------------------------------------------
-
-static inline void ws2812_put_pixel(uint32_t pixel_grb) {
+static inline void put_pixel(uint32_t pixel_grb) {
     pio_sm_put_blocking(pio0, 0, pixel_grb << 8u);
 }
 
+static inline void put_rgb(uint8_t r, uint8_t g, uint8_t b) {
+    uint32_t grb = ((uint32_t)g << 16) | ((uint32_t)r << 8) | b;
+    put_pixel(grb);
+}
+
 void init_ws2812(void) {
-    // Standard WS2812 PIO program
-    static const uint16_t ws2812_program_instructions[] = {
-        0x6221, // 0: out x, 1 side 0 [2] - copy MSB of osr to x, set pin low
-        0x1123, // 1: jmp !x, 3 side 1 [1] - if x==0, jump to 3, set pin high
-        0x1400, // 2: jmp 0 side 1 [4] - jump to 0, pin already high
-        0xa442, // 3: nop side 0 [4] - idle, set pin low
-    };
-    static const struct pio_program ws2812_program = {
-        .instructions = ws2812_program_instructions,
-        .length = 4,
-        .origin = -1,
-    };
-
     uint offset = pio_add_program(pio0, &ws2812_program);
-    pio_gpio_init(pio0, WS2812_PIN);
-    pio_sm_set_consecutive_pindirs(pio0, 0, WS2812_PIN, 1, true);
-
-    pio_sm_config c = pio_get_default_sm_config();
-    sm_config_set_wrap(&c, offset, offset + 3);
-    sm_config_set_sideset(&c, 1, false, false);
-    sm_config_set_sideset_pins(&c, WS2812_PIN);
-    sm_config_set_out_shift(&c, false, true, 24);
-    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
-
-    float div = clock_get_hz(clk_sys) / (800000.0f * 10.0f);
-    sm_config_set_clkdiv(&c, div);
-
-    pio_sm_init(pio0, 0, offset, &c);
-    pio_sm_set_enabled(pio0, 0, true);
-
-    sleep_us(50);
-    ws2812_put_pixel(0);
-    sleep_us(50);
+    ws2812_program_init(pio0, 0, offset, WS2812_PIN, WS2812_FREQ, false);
+    printf("WS2812 initialized on GPIO %d\r\n", WS2812_PIN);
 }
 
 void update_led_indicator(void) {
-    uint8_t r, g, b;
     switch (current_mode) {
-        case MODE_SYNC:      r = 0;   g = 255; b = 0;   break;
-        case MODE_MAIN_ONLY: r = 0;   g = 0;   b = 255; break;
-        case MODE_SUB_ONLY:  r = 255; g = 0;   b = 0;   break;
-        default:            r = 255; g = 0;   b = 0;   break;
+        case MODE_SYNC:      put_rgb(0, 255, 0); break;    // Green
+        case MODE_MAIN_ONLY: put_rgb(0, 0, 255); break;   // Blue
+        case MODE_SUB_ONLY:  put_rgb(255, 0, 0); break;   // Red
+        default:            put_rgb(255, 0, 0); break;
     }
-    uint32_t grb = ((uint32_t)g << 16) | ((uint32_t)r << 8) | b;
-    ws2812_put_pixel(grb);
-    sleep_us(55);
 }
 
 // ------------------------------------------------------------------
@@ -230,12 +187,6 @@ int main(void) {
     DEBUG_printf("\r\n=== POE2GamePad Starting ===\r\n");
     DEBUG_printf("RP2350 PIO-USB Xbox 360 Controller Sync\r\n");
 
-    // First test GPIO LED (5 blinks)
-    DEBUG_printf("Testing GPIO LED (5 blinks)...\r\n");
-    blink_led_test();
-    DEBUG_printf("GPIO LED test complete\r\n");
-
-    // Then init WS2812
     init_ws2812();
     DEBUG_printf("WS2812 initialized\r\n");
 
