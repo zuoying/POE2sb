@@ -155,8 +155,8 @@ void process_and_send_reports(void) {
         ad_ctrl2.delay_ms = (get_rand_32() % 6) + 1;
         ad_ctrl2.last_update_ms = now;
         if (tud_ready()) {
-            tud_vendor_n_write(1, &ad_ctrl2.delayed_report, sizeof(xbox_report_t));
-            tud_vendor_n_flush(1);
+            tud_vendor_n_write(0, &ad_ctrl2.delayed_report, sizeof(xbox_report_t));
+            tud_vendor_n_flush(0);
         }
     }
 }
@@ -220,10 +220,14 @@ int main(void) {
     DEBUG_printf("PIO-USB configured, calling tusb_init()...\r\n");
 
     tusb_init();
-    DEBUG_printf("TinyUSB initialized\r\n");
+    DEBUG_printf("TinyUSB Device initialized\r\n");
 
-    tuh_init(1);
-    DEBUG_printf("TinyUSB Host initialized\r\n");
+    DEBUG_printf("Initializing TinyUSB Host...\r\n");
+    if (!tuh_init(1)) {
+        DEBUG_printf("ERROR: tuh_init failed!\r\n");
+    } else {
+        DEBUG_printf("TinyUSB Host initialized on rhport 1\r\n");
+    }
 
     DEBUG_printf("Entering main loop...\r\n");
 
