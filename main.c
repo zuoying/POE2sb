@@ -56,14 +56,14 @@ static inline uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 void init_ws2812(void) {
-    static const uint16_t ws2812_instructions[] = {
-        0x6221, // out x, 1 side 0 [2]
-        0x1123, // jmp !x, 3 side 1 [1]
-        0x1400, // jmp 0 side 1 [4]
-        0xa442, // nop side 0 [4]
+    static const uint16_t ws2812_program_instructions[] = {
+        0x6221, // 0: out x, 1 side 0 [2] - output 1 bit to X, set side low, 2 cycles
+        0x1123, // 1: jmp !x, 3 side 1 [1] - if X==0, jump to 3, side high, 1 cycle
+        0x1400, // 2: jmp 0 side 1 [4] - jump to 0, side high, 4 cycles
+        0xa442, // 3: nop side 0 [4] - nop, side low, 4 cycles (reset bit)
     };
     static const struct pio_program ws2812_program = {
-        .instructions = ws2812_instructions,
+        .instructions = ws2812_program_instructions,
         .length = 4,
         .origin = -1,
         .pio_version = 1,
@@ -81,6 +81,9 @@ void init_ws2812(void) {
     sm_config_set_clkdiv(&c, div);
     pio_sm_init(pio0, 0, offset, &c);
     pio_sm_set_enabled(pio0, 0, true);
+
+    // Send reset pulse (50μs low)
+    sleep_us(50);
 }
 
 void update_led_indicator(void) {
