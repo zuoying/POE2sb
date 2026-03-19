@@ -183,9 +183,13 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
 // 主函数
 // ------------------------------------------------------------------
 int main(void) {
+    // 设置系统时钟为 120MHz (必须是 12MHz 的倍数, 否则 PIO-USB 无法正常工作)
+    set_sys_clock_khz(120000, true);
+
     stdio_init_all();
     DEBUG_printf("\r\n=== POE2GamePad Starting ===\r\n");
     DEBUG_printf("RP2350 PIO-USB Xbox 360 Controller Sync\r\n");
+    DEBUG_printf("System clock: %ld Hz\r\n", clock_get_hz(clk_sys));
 
     init_ws2812();
     DEBUG_printf("WS2812 initialized\r\n");
@@ -194,21 +198,13 @@ int main(void) {
     update_led_indicator();
     DEBUG_printf("LED set to GREEN (SYNC mode)\r\n");
 
-    DEBUG_printf("Initializing TinyUSB Device (tusb_init)...\r\n");
-    tusb_init();
-    DEBUG_printf("TinyUSB Device initialized\r\n");
-
-    DEBUG_printf("Configuring PIO-USB Host...\r\n");
+    DEBUG_printf("Configuring TinyUSB...\r\n");
     pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
-    pio_cfg.pin_dp = 12;
     tuh_configure(1, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
 
-    DEBUG_printf("Initializing TinyUSB Host (tuh_init)...\r\n");
-    if (!tuh_init(1)) {
-        DEBUG_printf("ERROR: tuh_init failed!\r\n");
-    } else {
-        DEBUG_printf("TinyUSB Host initialized on rhport 1\r\n");
-    }
+    tusb_init();
+    tuh_init(1);
+    DEBUG_printf("TinyUSB initialized\r\n");
 
     DEBUG_printf("Entering main loop...\r\n");
 
