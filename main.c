@@ -51,50 +51,52 @@ static inline void ws2812_put_pixel(uint32_t pixel_grb) {
     pio_sm_put_blocking(pio0, 0, pixel_grb << 8u);
 }
 
-static inline uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b) {
-    return ((uint32_t)(r) << 8) | ((uint32_t)(g) << 16) | (uint32_t)(b);
-}
-
 void init_ws2812(void) {
+    // Use Pico SDK's built-in ws2812 Program
     static const uint16_t ws2812_program_instructions[] = {
-        0x6221, // 0: out x, 1 side 0 [2] - output 1 bit to X, set side low, 2 cycles
-        0x1123, // 1: jmp !x, 3 side 1 [1] - if X==0, jump to 3, side high, 1 cycle
-        0x1400, // 2: jmp 0 side 1 [4] - jump to 0, side high, 4 cycles
-        0xa442, // 3: nop side 0 [4] - nop, side low, 4 cycles (reset bit)
+        0xa442, // 0: nop side 1 [4]
+        0x6221, // 1: out x, 1 side 0 [2]
+        0x1123, // 2: jmp !x, 3 [1]
+        0x1400, // 3: jmp 0 [4]
     };
     static const struct pio_program ws2812_program = {
         .instructions = ws2812_program_instructions,
         .length = 4,
         .origin = -1,
-        .pio_version = 1,
     };
+
     uint offset = pio_add_program(pio0, &ws2812_program);
-    pio_gpio_init(pio0, WS2812_PIN);
-    pio_sm_set_consecutive_pindirs(pio0, 0, WS2812_PIN, 1, true);
+
+    // Important: Initialize GPIO for PIO
+    gpio_set_function(WS2812_PIN, GPIO_FUNC_PIO0);
+    gpio_init(WS2812_PIN);
+
     pio_sm_config c = pio_get_default_sm_config();
-    sm_config_set_wrap(&c, offset + 0, offset + 3);
-    sm_config_set_sideset(&c, 1, false, false);
+    sm_config_set_sideset(&c, 1, true, false);  // 1 sideset pin, no pindirs
     sm_config_set_sideset_pins(&c, WS2812_PIN);
-    sm_config_set_out_shift(&c, false, true, 24);
+    sm_config_set_out_shift(&c, false, true, 24);  // shift left, autopull at 24 bits
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
-    float div = clock_get_hz(clk_sys) / (800000.0f * 10.0f);
+
+    float div = clock_get_hz(clk_sys) / (800000.0f * 10.0f);  // 800kHz * 10
     sm_config_set_clkdiv(&c, div);
+
     pio_sm_init(pio0, 0, offset, &c);
     pio_sm_set_enabled(pio0, 0, true);
 
-    // Send reset pulse (50μs low)
+    // Reset LED
+    sleep_us(50);
+    ws2812_put_pixel(0);
     sleep_us(50);
 }
 
 void update_led_indicator(void) {
     uint8_t r, g, b;
     switch (current_mode) {
-        case MODE_SYNC:      r = 0;   g = 255; b = 0;   break;  // Green
-        case MODE_MAIN_ONLY: r = 0;   g = 0;   b = 255; break;  // Blue
-        case MODE_SUB_ONLY:  r = 255; g = 0;   b = 0;   break;  // Red
+        case MODE_SYNC:      r = 0;   g = 255; b = 0;   break;
+        case MODE_MAIN_ONLY: r = 0;   g = 0;   b = 255; break;
+        case MODE_SUB_ONLY:  r = 255; g = 0;   b = 0;   break;
         default:            r = 255; g = 0;   b = 0;   break;
     }
-    // WS2812 GRB format: high byte=G, mid byte=R, low byte=B
     uint32_t grb = ((uint32_t)g << 16) | ((uint32_t)r << 8) | b;
     ws2812_put_pixel(grb);
     sleep_us(55);
