@@ -222,7 +222,7 @@ int main(void) {
     tusb_init();
     DEBUG_printf("TinyUSB initialized\r\n");
 
-    tuh_init();
+    tuh_init(1);
     DEBUG_printf("TinyUSB Host initialized\r\n");
 
     DEBUG_printf("Entering main loop...\r\n");
