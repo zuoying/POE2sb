@@ -209,23 +209,20 @@ int main(void) {
     init_ws2812();
     DEBUG_printf("WS2812 initialized\r\n");
 
-    update_led_indicator();
-    DEBUG_printf("LED set to RED (initial mode = SUB_ONLY, will change to SYNC)\r\n");
-
     current_mode = MODE_SYNC;
     update_led_indicator();
-    DEBUG_printf("LED changed to GREEN (SYNC mode)\r\n");
+    DEBUG_printf("LED set to GREEN (SYNC mode)\r\n");
 
-    DEBUG_printf("Configuring PIO-USB for host (Xbox 360 controller)...\r\n");
-    pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
-    pio_cfg.pin_dp = 12;
-    tuh_configure(1, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
-    DEBUG_printf("PIO-USB configured, calling tusb_init()...\r\n");
-
+    DEBUG_printf("Initializing TinyUSB Device (tusb_init)...\r\n");
     tusb_init();
     DEBUG_printf("TinyUSB Device initialized\r\n");
 
-    DEBUG_printf("Initializing TinyUSB Host...\r\n");
+    DEBUG_printf("Configuring PIO-USB Host...\r\n");
+    pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
+    pio_cfg.pin_dp = 12;
+    tuh_configure(1, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
+
+    DEBUG_printf("Initializing TinyUSB Host (tuh_init)...\r\n");
     if (!tuh_init(1)) {
         DEBUG_printf("ERROR: tuh_init failed!\r\n");
     } else {
