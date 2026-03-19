@@ -87,12 +87,17 @@ void init_ws2812(void) {
 }
 
 void update_led_indicator(void) {
+    uint8_t r, g, b;
     switch (current_mode) {
-        case MODE_SYNC:      ws2812_put_pixel(urgb_u32(0, 255, 0)); break;
-        case MODE_MAIN_ONLY: ws2812_put_pixel(urgb_u32(0, 0, 255)); break;
-        case MODE_SUB_ONLY:  ws2812_put_pixel(urgb_u32(255, 0, 0)); break;
-        default: break;
+        case MODE_SYNC:      r = 0;   g = 255; b = 0;   break;  // Green
+        case MODE_MAIN_ONLY: r = 0;   g = 0;   b = 255; break;  // Blue
+        case MODE_SUB_ONLY:  r = 255; g = 0;   b = 0;   break;  // Red
+        default:            r = 255; g = 0;   b = 0;   break;
     }
+    // WS2812 GRB format: high byte=G, mid byte=R, low byte=B
+    uint32_t grb = ((uint32_t)g << 16) | ((uint32_t)r << 8) | b;
+    ws2812_put_pixel(grb);
+    sleep_us(55);
 }
 
 // ------------------------------------------------------------------
