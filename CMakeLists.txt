@@ -19,6 +19,8 @@ pico_sdk_init()
 
 # 增加全局定义，确保所有库都能识别 RP2350
 add_compile_definitions(PICO_RP2350=1)
+add_compile_definitions(CFG_TUSB_MCU=111)
+add_compile_definitions(CFG_TUSB_OS=4)
 
 # 强制指定 RP2350 平台
 # (已经作为缓存变量在 include 之前设置)
@@ -37,9 +39,17 @@ if (EXISTS ${PICO_PIO_USB_PATH}/CMakeLists.txt)
     add_subdirectory(${PICO_PIO_USB_PATH} pico_pio_usb)
 endif()
 
+# 显式添加 hcd_pio_usb.c 源文件以解决云端编译环境链接问题
+if (EXISTS ${PICO_PIO_USB_PATH}/src/hcd_pio_usb.c)
+    set(HCD_PIO_USB_SRC ${PICO_PIO_USB_PATH}/src/hcd_pio_usb.c)
+elseif (EXISTS ${PICO_SDK_PATH}/lib/tinyusb/src/portable/raspberrypi/pio_usb/hcd_pio_usb.c)
+    set(HCD_PIO_USB_SRC ${PICO_SDK_PATH}/lib/tinyusb/src/portable/raspberrypi/pio_usb/hcd_pio_usb.c)
+endif()
+
 add_executable(poe2gamepad
     main.c
     usb_descriptors.c
+    ${HCD_PIO_USB_SRC}
 )
 
 

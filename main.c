@@ -14,6 +14,10 @@
 
 #include "usb_descriptors.h"
 
+// UART 调试输出
+#define DEBUG_printf printf
+#define DEBUG_LED 25
+
 // ------------------------------------------------------------------
 // 全局变量与枚举
 // ------------------------------------------------------------------
@@ -35,8 +39,8 @@ typedef struct {
     xbox_report_t delayed_report;
 } anti_detect_t;
 
-static anti_detect_t ad_ctrl1;
-static anti_detect_t ad_ctrl2;
+static anti_detect_t ad_ctrl1 = {0, 1, {0}};
+static anti_detect_t ad_ctrl2 = {0, 1, {0}};
 
 // ------------------------------------------------------------------
 // WS2812 RGB LED 驱动
@@ -158,19 +162,31 @@ void process_and_send_reports(void) {
 }
 
 // ------------------------------------------------------------------
+// USB Device 回调
+// ------------------------------------------------------------------
+void tud_mount_cb(void) {
+    DEBUG_printf("TinyUSB: Device mounted\r\n");
+}
+
+void tud_umount_cb(void) {
+    DEBUG_printf("TinyUSB: Device unmounted\r\n");
+}
+
+// ------------------------------------------------------------------
 // USB Host 回调
 // ------------------------------------------------------------------
 void tuh_mount_cb(uint8_t dev_addr) {
+    DEBUG_printf("TinyUSB: Host device mounted (addr=%d)\r\n", dev_addr);
     host_connected = true;
 }
 
 void tuh_umount_cb(uint8_t dev_addr) {
-    (void)dev_addr;
+    DEBUG_printf("TinyUSB: Host device unmounted (addr=%d)\r\n", dev_addr);
     host_connected = false;
     memset(&host_report, 0, sizeof(xbox_report_t));
 }
 
-// 替换为标准的 HID 报告接收回调
+// HID 报告接收回调
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
     (void)instance;
     if (len >= sizeof(xbox_report_t)) {
@@ -184,13 +200,28 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
 // ------------------------------------------------------------------
 int main(void) {
     stdio_init_all();
-    init_ws2812();
-    update_led_indicator();
+    DEBUG_printf("\r\n=== POE2GamePad Starting ===\r\n");
+    DEBUG_printf("RP2350 PIO-USB Xbox 360 Controller Sync\r\n");
 
+    init_ws2812();
+    DEBUG_printf("WS2812 initialized\r\n");
+
+    update_led_indicator();
+    DEBUG_printf("LED set to RED (initial mode = SUB_ONLY, will change to SYNC)\r\n");
+
+    current_mode = MODE_SYNC;
+    update_led_indicator();
+    DEBUG_printf("LED changed to GREEN (SYNC mode)\r\n");
+
+    DEBUG_printf("Configuring PIO-USB for host (Xbox 360 controller)...\r\n");
     pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
     pio_cfg.pin_dp = 12;
     tuh_configure(1, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
+    DEBUG_printf("PIO-USB configured, calling tusb_init()...\r\n");
+
     tusb_init();
+    DEBUG_printf("TinyUSB initialized\r\n");
+    DEBUG_printf("Entering main loop...\r\n");
 
     while (1) {
         tud_task();

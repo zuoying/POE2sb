@@ -19,15 +19,20 @@
 typedef void * pipe_handle_t;
 #endif
 
-// 端口模式配置
+// 端点0大小 (必须定义)
+#ifndef CFG_TUD_ENDPOINT0_SIZE
+#define CFG_TUD_ENDPOINT0_SIZE       64
+#endif
+
+// 端口模式配置 - Port0是设备(连接PC), Port1是主机(连接手柄)
 #define CFG_TUSB_RHPORT0_MODE       OPT_MODE_DEVICE
 #define CFG_TUSB_RHPORT1_MODE       (OPT_MODE_HOST | OPT_MODE_FULL_SPEED)
 
 // DEVICE 配置
 #define CFG_TUD_ENABLED             1
-#define CFG_TUD_VENDOR              2 
-#define CFG_TUD_VENDOR_RX_BUFSIZE   64
-#define CFG_TUD_VENDOR_TX_BUFSIZE   64
+#define CFG_TUD_VENDOR              2
+#define CFG_TUD_VENDOR_RX_BUFSIZE   256
+#define CFG_TUD_VENDOR_TX_BUFSIZE   256
 
 // HOST 配置
 #define CFG_TUH_ENABLED             1

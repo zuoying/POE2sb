@@ -41,7 +41,12 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -G Ninja -DPICO_PLATFORM=rp2350 -DPICO_BOARD=pico2 ..
+        cmake -G Ninja \
+          -DPICO_PLATFORM=rp2350 \
+          -DPICO_BOARD=pico2 \
+          -DPICO_PIO_USB_PATH=$GITHUB_WORKSPACE/Pico-PIO-USB \
+          -DCMAKE_BUILD_TYPE=Release \
+          ..
 
     - name: Build
       run: |
