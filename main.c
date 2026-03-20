@@ -65,8 +65,8 @@ static inline void put_pixel(uint32_t pixel_grbw) {
 }
 
 static inline void put_rgb(uint8_t r, uint8_t g, uint8_t b) {
-    // RGBW格式：构建32位数据（GRBW），白色分量设为0
-    // 注意：ws2812_program_init使用RGBW格式时，sm_config_set_out_shift设置为32位
+    // RGB格式兼容：将RGB转换为RGBW格式，白色分量设为0
+    // 数据格式：GRBW (Green, Red, Blue, White)
     uint32_t grbw = ((uint32_t)g << 24) | ((uint32_t)r << 16) | ((uint32_t)b << 8) | 0;
     put_pixel(grbw);
 }
@@ -77,8 +77,8 @@ static inline void put_off(void) {
 
 void init_ws2812(void) {
     uint offset = pio_add_program(pio0, &ws2812_program);
-    ws2812_program_init(pio0, 0, offset, WS2812_PIN, WS2812_FREQ, true);  // 使用RGBW格式，与官方示例一致
-    printf("WS2812 initialized on GPIO %d (RGBW format)\r\n", WS2812_PIN);
+    ws2812_program_init(pio0, 0, offset, WS2812_PIN, WS2812_FREQ, false);  // 尝试使用RGB格式，可能LED硬件不支持RGBW
+    printf("WS2812 initialized on GPIO %d (RGB format)\r\n", WS2812_PIN);
 }
 
 void update_led_indicator(void) {
@@ -86,11 +86,25 @@ void update_led_indicator(void) {
     // 但手柄未连接时亮度减半，以示区分
     uint8_t brightness = host_connected ? 255 : 64;
     
+    DEBUG_printf("DEBUG: update_led_indicator - current_mode=%d, host_connected=%d, brightness=%d\r\n", current_mode, host_connected, brightness);
+    
     switch (current_mode) {
-        case MODE_SYNC:      put_rgb(0, brightness, 0); break;    // Green
-        case MODE_MAIN_ONLY: put_rgb(0, 0, brightness); break;   // Blue
-        case MODE_SUB_ONLY:  put_rgb(brightness, 0, 0); break;   // Red
-        default:            put_rgb(brightness, 0, 0); break;
+        case MODE_SYNC:
+            DEBUG_printf("DEBUG: Setting LED to GREEN\r\n");
+            put_rgb(0, brightness, 0);
+            break;
+        case MODE_MAIN_ONLY:
+            DEBUG_printf("DEBUG: Setting LED to BLUE\r\n");
+            put_rgb(0, 0, brightness);
+            break;
+        case MODE_SUB_ONLY:
+            DEBUG_printf("DEBUG: Setting LED to RED\r\n");
+            put_rgb(brightness, 0, 0);
+            break;
+        default:
+            DEBUG_printf("DEBUG: Setting LED to RED (DEFAULT)\r\n");
+            put_rgb(brightness, 0, 0);
+            break;
     }
 }
 
@@ -303,6 +317,7 @@ int main(void) {
 
     // 设置初始模式并更新LED
     current_mode = MODE_SYNC;
+    DEBUG_printf("Initializing with MODE_SYNC\r\n");
     update_led_indicator();  // 初始时手柄未连接，LED显示低亮度绿色
     DEBUG_printf("Initial mode: SYNC (LED shows low-brightness green until controller connected)\r\n");
 
