@@ -25,7 +25,7 @@
 typedef struct {
     uint8_t report_id;   // 总是 0x00
     uint8_t report_size; // 总是 0x14 (20 字节)
-    uint16_t buttons;    // 按键位掩码
+    uint16_t buttons;   // 按键位掩码
     uint8_t left_trigger;
     uint8_t right_trigger;
     int16_t left_stick_x;
@@ -34,6 +34,9 @@ typedef struct {
     int16_t right_stick_y;
     uint8_t reserved[6];
 } __attribute__((packed)) xbox_report_t;
+
+// 验证报告大小是否正确
+static_assert(sizeof(xbox_report_t) == 20, "Xbox report size must be 20 bytes");
 
 // 按键位掩码定义 (微软 Xbox 360)
 #define XBOX_BTN_UP     0x0001
