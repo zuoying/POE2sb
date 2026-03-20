@@ -387,12 +387,14 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
     DEBUG_printf("DEBUG: Vendor control request - bmRequestType=%02x, bRequest=%02x, wValue=%04x, wIndex=%04x, wLength=%04x\r\n", 
                 request->bmRequestType, request->bRequest, request->wValue, request->wIndex, request->wLength);
     
-    // 解析请求类型
-    uint8_t direction = TU_GET_DIR(request->bmRequestType);
-    uint8_t type = TU_GET_TYPE(request->bmRequestType);
-    uint8_t recipient = TU_GET_RECIPIENT(request->bmRequestType);
+    // 直接解析请求类型（不使用可能不存在的宏）
+    uint8_t direction = (request->bmRequestType >> 7) & 0x01;
+    uint8_t type = (request->bmRequestType >> 5) & 0x03;
+    uint8_t recipient = request->bmRequestType & 0x1F;
     
     // 检查是否为XInput相关的控制请求 (Class + Interface)
+    #define TUSB_REQ_TYPE_CLASS 0x01
+    #define TUSB_REQ_RCPT_INTERFACE 0x01
     if (type == TUSB_REQ_TYPE_CLASS && recipient == TUSB_REQ_RCPT_INTERFACE) {
         // 处理XInput标准请求
         switch (request->bRequest) {
