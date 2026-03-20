@@ -3,13 +3,13 @@
 
 #include <stdint.h>
 
-// 强制指定 MCU 为 RP2350 (111) 和 OS 为 PICO (4)
-// 使用数值常量规避 SDK 2.0.0 云端环境识别错误及宏重定义警告
-#ifndef CFG_TUSB_MCU
+// 仅在未定义时指定 MCU 为 RP2350 (111) 和 OS 为 PICO (4)
+// 避免与命令行定义冲突
+#if !defined(CFG_TUSB_MCU)
   #define CFG_TUSB_MCU                111
 #endif
 
-#ifndef CFG_TUSB_OS
+#if !defined(CFG_TUSB_OS)
   #define CFG_TUSB_OS                 4
 #endif
 
