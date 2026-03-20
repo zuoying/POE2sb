@@ -58,15 +58,16 @@ static volatile bool core1_ready = false;
 // ------------------------------------------------------------------
 // WS2812 RGB LED 驱动 (官方方法)
 // ------------------------------------------------------------------
-static inline void put_pixel(uint32_t pixel_grb) {
-    pio_sm_put_blocking(pio0, 0, pixel_grb << 8u);
+static inline void put_pixel(uint32_t pixel_grbw) {
+    // 由于我们使用RGBW格式，数据已经是完整的32位，不需要再左移8位
+    pio_sm_put_blocking(pio0, 0, pixel_grbw);
 }
 
 static inline void put_rgb(uint8_t r, uint8_t g, uint8_t b) {
-    // RGBW格式：按照官方示例的方式构建数据
-    // 注意：put_pixel函数会将数据左移8位，所以这里不需要额外左移
-    uint32_t grb = ((uint32_t)g << 16) | ((uint32_t)r << 8) | b;
-    put_pixel(grb);
+    // RGBW格式：构建32位数据（GRBW），白色分量设为0
+    // 注意：ws2812_program_init使用RGBW格式时，sm_config_set_out_shift设置为32位
+    uint32_t grbw = ((uint32_t)g << 24) | ((uint32_t)r << 16) | ((uint32_t)b << 8) | 0;
+    put_pixel(grbw);
 }
 
 static inline void put_off(void) {
@@ -183,8 +184,9 @@ void process_and_send_reports(void) {
         ad_ctrl1.delay_ms = (get_rand_32() % 6) + 1;
         ad_ctrl1.last_update_ms = now;
         if (tud_ready()) {
-            tud_vendor_n_write(0, &ad_ctrl1.delayed_report, sizeof(xbox_report_t));
-            tud_vendor_n_flush(0);
+            // 使用中断端点发送控制器报告
+            uint8_t ep_in = 0x81; // 端点1 IN
+            tud_edpt_xfer(ep_in, &ad_ctrl1.delayed_report, sizeof(xbox_report_t), NULL);
         }
     }
 
@@ -214,8 +216,9 @@ void process_and_send_reports(void) {
         ad_ctrl2.delay_ms = (get_rand_32() % 6) + 1;
         ad_ctrl2.last_update_ms = now;
         if (tud_ready()) {
-            tud_vendor_n_write(1, &ad_ctrl2.delayed_report, sizeof(xbox_report_t));
-            tud_vendor_n_flush(1);
+            // 使用中断端点发送控制器报告
+            uint8_t ep_in = 0x82; // 端点2 IN
+            tud_edpt_xfer(ep_in, &ad_ctrl2.delayed_report, sizeof(xbox_report_t), NULL);
         }
     }
 }
@@ -340,4 +343,11 @@ int main(void) {
 void tud_vendor_rx_cb(uint8_t itf) {
     uint8_t buf[32];
     tud_vendor_n_read(itf, buf, sizeof(buf));
+}
+
+// 当Vendor特定设备发送数据完成时调用的回调函数
+// 对于Xbox 360控制器来说，这个回调函数很重要，确保Windows能够正确接收数据
+void tud_vendor_tx_cb(uint8_t itf) {
+    (void) itf;
+    // 数据发送完成后不需要特别处理
 }
