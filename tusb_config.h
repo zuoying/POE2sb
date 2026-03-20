@@ -3,15 +3,8 @@
 
 #include <stdint.h>
 
-// 仅在未定义时指定 MCU 为 RP2350 (111) 和 OS 为 PICO (4)
-// 避免与命令行定义冲突
-#if !defined(CFG_TUSB_MCU)
-  #define CFG_TUSB_MCU                111
-#endif
-
-#if !defined(CFG_TUSB_OS)
-  #define CFG_TUSB_OS                 4
-#endif
+// 不再手动定义 CFG_TUSB_MCU 和 CFG_TUSB_OS，让 Pico SDK 自动设置
+// 这些宏在命令行中由 CMake 自动生成，避免重复定义警告
 
 // 核心修复：定义 TinyUSB PIO-USB 必须的类型
 #ifndef _PIPE_HANDLE_T_
