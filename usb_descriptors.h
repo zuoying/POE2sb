@@ -3,9 +3,9 @@
 
 #include "tusb.h"
 
-// Xbox 360 控制器 PID/VID
-#define XBOX_VID 0x045E
-#define XBOX_PID 0x028E
+// Xbox 360 控制器 PID/VID - 使用兼容的PID
+#define XBOX_VID 0x045E  // Microsoft Corporation
+#define XBOX_PID 0x02A1  // Xbox 360 Controller for Windows
 
 // XInput 接口类 (Vendor Specific)
 #define XINPUT_CLASS 0xFF
@@ -20,6 +20,13 @@
 
 // 每个手柄的报告大小
 #define XBOX_REPORT_SIZE 20
+
+// XInput 设备请求类型
+#define XINPUT_SET_REPORT 0x21
+#define XINPUT_GET_REPORT 0xA1
+#define XINPUT_REPORT_TYPE_INPUT 0x00
+#define XINPUT_REPORT_TYPE_OUTPUT 0x01
+#define XINPUT_REPORT_TYPE_FEATURE 0x02
 
 // 手柄输入报告结构体 (Xbox 360 XInput)
 typedef struct {
