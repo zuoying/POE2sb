@@ -378,3 +378,56 @@ void tud_vendor_tx_cb(uint8_t itf, uint32_t sent_bytes) {
     (void) sent_bytes;
     // 数据发送完成后不需要特别处理
 }
+
+// USB控制请求处理 - 这是Xbox 360控制器识别的关键
+bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const * request) {
+    // 忽略数据阶段
+    if (stage != CONTROL_STAGE_SETUP) return true;
+    
+    DEBUG_printf("DEBUG: Vendor control request - bmRequestType=%02x, bRequest=%02x, wValue=%04x, wIndex=%04x, wLength=%04x\r\n", 
+                request->bmRequestType, request->bRequest, request->wValue, request->wIndex, request->wLength);
+    
+    // 解析请求类型
+    uint8_t direction = TU_GET_DIR(request->bmRequestType);
+    uint8_t type = TU_GET_TYPE(request->bmRequestType);
+    uint8_t recipient = TU_GET_RECIPIENT(request->bmRequestType);
+    
+    // 检查是否为XInput相关的控制请求 (Class + Interface)
+    if (type == TUSB_REQ_TYPE_CLASS && recipient == TUSB_REQ_RCPT_INTERFACE) {
+        // 处理XInput标准请求
+        switch (request->bRequest) {
+            case 0x01: // SET_REPORT
+                // Windows 正在设置输出报告 (震动/LED)
+                // 简单地接受数据但不处理
+                uint8_t buffer[32];
+                if (request->wLength > sizeof(buffer)) return false;
+                
+                // 告诉TinyUSB我们准备好接收数据
+                tud_control_xfer(rhport, request, buffer, request->wLength);
+                return true;
+                
+            case 0x02: // GET_REPORT
+                // Windows 正在请求输入报告或功能报告
+                if (request->wLength == 0) return true;
+                
+                // 为功能报告返回空数据
+                uint8_t empty_response[32] = {0};
+                tud_control_xfer(rhport, request, empty_response, sizeof(empty_response));
+                return true;
+                
+            case 0x03: // SET_IDLE
+                // 告诉Windows我们准备好接收请求
+                tud_control_xfer(rhport, request, NULL, 0);
+                return true;
+                
+            case 0x04: // GET_IDLE
+                // 返回0作为当前IDLE值
+                uint8_t idle_response = 0;
+                tud_control_xfer(rhport, request, &idle_response, 1);
+                return true;
+        }
+    }
+    
+    // 默认情况下，让TinyUSB处理未识别的请求
+    return false;
+}
