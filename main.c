@@ -14,6 +14,9 @@
 #include "pio_usb.h"
 #include "tusb.h"
 
+// 定义Xbox 360控制器的XInput报告ID
+#define XINPUT_REPORT_ID 0x00
+
 #include "usb_descriptors.h"
 #include "ws2812.pio.h"
 
@@ -194,8 +197,11 @@ void process_and_send_reports(void) {
             ad_ctrl1.delayed_report.right_trigger = apply_trigger_offset(host_report.right_trigger, strength);
         } else {
             memset(&ad_ctrl1.delayed_report, 0, sizeof(xbox_report_t));
-            ad_ctrl1.delayed_report.report_size = 0x14;
         }
+        // 确保报告ID和大小正确
+        ad_ctrl1.delayed_report.report_id = XINPUT_REPORT_ID;
+        ad_ctrl1.delayed_report.report_size = 0x14;  // 20字节，Xbox 360标准报告大小
+        
         ad_ctrl1.delay_ms = (get_rand_32() % 6) + 1;
         ad_ctrl1.last_update_ms = now;
         if (tud_ready()) {
@@ -226,8 +232,11 @@ void process_and_send_reports(void) {
             }
         } else {
             memset(&ad_ctrl2.delayed_report, 0, sizeof(xbox_report_t));
-            ad_ctrl2.delayed_report.report_size = 0x14;
         }
+        // 确保报告ID和大小正确
+        ad_ctrl2.delayed_report.report_id = XINPUT_REPORT_ID;
+        ad_ctrl2.delayed_report.report_size = 0x14;  // 20字节，Xbox 360标准报告大小
+        
         ad_ctrl2.delay_ms = (get_rand_32() % 6) + 1;
         ad_ctrl2.last_update_ms = now;
         if (tud_ready()) {
