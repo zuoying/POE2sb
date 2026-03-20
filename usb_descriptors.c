@@ -36,7 +36,7 @@ uint8_t const desc_configuration[] = {
     0x02, // 2 Interfaces
     0x01, // Configuration Value
     0x00, // Index of string descriptor
-    0x80, // Attributes: Bus Powered
+    0xC0, // Attributes: Bus Powered + Self Powered
     0xFA, // MaxPower 500mA
 
     // Interface 0: Xbox 360 Controller 1
