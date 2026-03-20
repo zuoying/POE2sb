@@ -80,16 +80,15 @@ void init_ws2812(void) {
 }
 
 void update_led_indicator(void) {
-    if (!host_connected) {
-        put_off();  // 手柄未插时灯灭
-        return;
-    }
+    // 无论手柄是否连接，都显示当前模式的颜色
+    // 但手柄未连接时亮度减半，以示区分
+    uint8_t brightness = host_connected ? 255 : 64;
     
     switch (current_mode) {
-        case MODE_SYNC:      put_rgb(0, 255, 0); break;    // Green
-        case MODE_MAIN_ONLY: put_rgb(0, 0, 255); break;   // Blue
-        case MODE_SUB_ONLY:  put_rgb(255, 0, 0); break;   // Red
-        default:            put_rgb(255, 0, 0); break;
+        case MODE_SYNC:      put_rgb(0, brightness, 0); break;    // Green
+        case MODE_MAIN_ONLY: put_rgb(0, 0, brightness); break;   // Blue
+        case MODE_SUB_ONLY:  put_rgb(brightness, 0, 0); break;   // Red
+        default:            put_rgb(brightness, 0, 0); break;
     }
 }
 
@@ -215,8 +214,8 @@ void process_and_send_reports(void) {
         ad_ctrl2.delay_ms = (get_rand_32() % 6) + 1;
         ad_ctrl2.last_update_ms = now;
         if (tud_ready()) {
-            tud_vendor_n_write(0, &ad_ctrl2.delayed_report, sizeof(xbox_report_t));
-            tud_vendor_n_flush(0);
+            tud_vendor_n_write(1, &ad_ctrl2.delayed_report, sizeof(xbox_report_t));
+            tud_vendor_n_flush(1);
         }
     }
 }
@@ -299,8 +298,8 @@ int main(void) {
 
     // 设置初始模式并更新LED
     current_mode = MODE_SYNC;
-    update_led_indicator();  // 初始时手柄未连接，LED应该熄灭
-    DEBUG_printf("Initial mode: SYNC (LED off until controller connected)\r\n");
+    update_led_indicator();  // 初始时手柄未连接，LED显示低亮度绿色
+    DEBUG_printf("Initial mode: SYNC (LED shows low-brightness green until controller connected)\r\n");
 
     // 初始化 USB Device（Core0 负责）
     DEBUG_printf("Core0: Initializing USB Device...\r\n");

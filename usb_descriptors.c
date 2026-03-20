@@ -25,21 +25,21 @@ uint8_t const * tud_descriptor_device_cb(void) {
 }
 
 // ------------------------------------------------------------------
-// 配置描述符 (单 Xbox 360 控制器 - 先测试基础功能)
+// 配置描述符 (双 Xbox 360 控制器)
 // ------------------------------------------------------------------
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + 1 * (9 + 7 + 7)) // 1 config + 1 interface + 2 endpoints
+#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + 2 * (9 + 7 + 7)) // 1 config + 2 interfaces + 4 endpoints
 
 uint8_t const desc_configuration[] = {
     // Configuration Descriptor
     9, TUSB_DESC_CONFIGURATION,
     U16_TO_U8S_LE(CONFIG_TOTAL_LEN),
-    0x01, // 1 Interface
+    0x02, // 2 Interfaces
     0x01, // Configuration Value
     0x00, // Index of string descriptor
     0x80, // Attributes: Bus Powered
     0xFA, // MaxPower 500mA
 
-    // Interface 0: Xbox 360 Controller
+    // Interface 0: Xbox 360 Controller 1
     9, TUSB_DESC_INTERFACE,
     0x00, // bInterfaceNumber
     0x00, // bAlternateSetting
@@ -49,16 +49,40 @@ uint8_t const desc_configuration[] = {
     0x01, // bInterfaceProtocol: XInput
     0x00, // iInterface
 
-    // Endpoint IN: Controller Input
+    // Endpoint IN: Controller 1 Input
     7, TUSB_DESC_ENDPOINT,
     0x81, // bEndpointAddress (IN 1)
     0x03, // bmAttributes (Interrupt)
     U16_TO_U8S_LE(32),
     0x01, // bInterval
 
-    // Endpoint OUT: Controller Output (Rumble/LED)
+    // Endpoint OUT: Controller 1 Output (Rumble/LED)
     7, TUSB_DESC_ENDPOINT,
     0x01, // bEndpointAddress (OUT 1)
+    0x03, // bmAttributes (Interrupt)
+    U16_TO_U8S_LE(32),
+    0x08, // bInterval
+
+    // Interface 1: Xbox 360 Controller 2
+    9, TUSB_DESC_INTERFACE,
+    0x01, // bInterfaceNumber
+    0x00, // bAlternateSetting
+    0x02, // bNumEndpoints (IN + OUT)
+    0xFF, // bInterfaceClass: Vendor Specific
+    0x5D, // bInterfaceSubClass: Xbox 360 Controller
+    0x01, // bInterfaceProtocol: XInput
+    0x00, // iInterface
+
+    // Endpoint IN: Controller 2 Input
+    7, TUSB_DESC_ENDPOINT,
+    0x82, // bEndpointAddress (IN 2)
+    0x03, // bmAttributes (Interrupt)
+    U16_TO_U8S_LE(32),
+    0x01, // bInterval
+
+    // Endpoint OUT: Controller 2 Output (Rumble/LED)
+    7, TUSB_DESC_ENDPOINT,
+    0x02, // bEndpointAddress (OUT 2)
     0x03, // bmAttributes (Interrupt)
     U16_TO_U8S_LE(32),
     0x08, // bInterval
