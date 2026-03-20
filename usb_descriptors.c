@@ -13,7 +13,7 @@ tusb_desc_device_t const desc_device = {
     .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
     .idVendor           = XBOX_VID,
     .idProduct          = XBOX_PID,
-    .bcdDevice          = 0x0100,
+    .bcdDevice          = 0x0114,  // Xbox 360控制器标准版本号
     .iManufacturer      = 0x01,
     .iProduct           = 0x02,
     .iSerialNumber      = 0x03,
@@ -30,13 +30,13 @@ uint8_t const * tud_descriptor_device_cb(void) {
 #define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + 2 * (9 + 7 + 7)) // 1 config + 2 interfaces + 4 endpoints
 
 uint8_t const desc_configuration[] = {
-    // Configuration Descriptor
+    // Configuration Descriptor - 标准Xbox 360控制器配置
     9, TUSB_DESC_CONFIGURATION,
     U16_TO_U8S_LE(CONFIG_TOTAL_LEN),
     0x02, // 2 Interfaces
     0x01, // Configuration Value
     0x00, // Index of string descriptor
-    0xC0, // Attributes: Bus Powered + Self Powered
+    0x80, // Attributes: Bus Powered only
     0xFA, // MaxPower 500mA
 
     // Interface 0: Xbox 360 Controller 1
