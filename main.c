@@ -4,6 +4,7 @@
 
 #include "pico/stdlib.h"
 #include "pico/rand.h"
+#include "pico/multicore.h"
 #include "hardware/pio.h"
 #include "hardware/dma.h"
 #include "hardware/clocks.h"
@@ -184,9 +185,9 @@ void process_and_send_reports(void) {
         ad_ctrl1.delay_ms = (get_rand_32() % 6) + 1;
         ad_ctrl1.last_update_ms = now;
         if (tud_ready()) {
-            // 使用中断端点发送控制器报告
-            uint8_t ep_in = 0x81; // 端点1 IN
-            tud_edpt_xfer(ep_in, &ad_ctrl1.delayed_report, sizeof(xbox_report_t), NULL);
+            // 使用Vendor特定设备函数发送控制器报告
+            tud_vendor_n_write(0, &ad_ctrl1.delayed_report, sizeof(xbox_report_t));
+            tud_vendor_n_flush(0);
         }
     }
 
@@ -216,9 +217,9 @@ void process_and_send_reports(void) {
         ad_ctrl2.delay_ms = (get_rand_32() % 6) + 1;
         ad_ctrl2.last_update_ms = now;
         if (tud_ready()) {
-            // 使用中断端点发送控制器报告
-            uint8_t ep_in = 0x82; // 端点2 IN
-            tud_edpt_xfer(ep_in, &ad_ctrl2.delayed_report, sizeof(xbox_report_t), NULL);
+            // 使用Vendor特定设备函数发送控制器报告
+            tud_vendor_n_write(1, &ad_ctrl2.delayed_report, sizeof(xbox_report_t));
+            tud_vendor_n_flush(1);
         }
     }
 }
@@ -269,6 +270,7 @@ void tuh_umount_cb(uint8_t dev_addr) {
 
 // HID 报告接收回调
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
+    (void)dev_addr;
     (void)instance;
     if (len >= sizeof(xbox_report_t)) {
         memcpy(&host_report, report, sizeof(xbox_report_t));
@@ -347,7 +349,8 @@ void tud_vendor_rx_cb(uint8_t itf) {
 
 // 当Vendor特定设备发送数据完成时调用的回调函数
 // 对于Xbox 360控制器来说，这个回调函数很重要，确保Windows能够正确接收数据
-void tud_vendor_tx_cb(uint8_t itf) {
+void tud_vendor_tx_cb(uint8_t itf, uint32_t sent_bytes) {
     (void) itf;
+    (void) sent_bytes;
     // 数据发送完成后不需要特别处理
 }
