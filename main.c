@@ -59,16 +59,16 @@ static volatile bool core1_ready = false;
 // ------------------------------------------------------------------
 // WS2812 RGB LED 驱动 (官方方法)
 // ------------------------------------------------------------------
-static inline void put_pixel(uint32_t pixel_grbw) {
-    // 由于我们使用RGBW格式，数据已经是完整的32位，不需要再左移8位
-    pio_sm_put_blocking(pio0, 0, pixel_grbw);
+static inline void put_pixel(uint32_t pixel_data) {
+    // 对于RGB格式，ws2812_program_init会自动处理数据长度
+    pio_sm_put_blocking(pio0, 0, pixel_data);
 }
 
 static inline void put_rgb(uint8_t r, uint8_t g, uint8_t b) {
-    // RGB格式兼容：将RGB转换为RGBW格式，白色分量设为0
-    // 数据格式：GRBW (Green, Red, Blue, White)
-    uint32_t grbw = ((uint32_t)g << 24) | ((uint32_t)r << 16) | ((uint32_t)b << 8) | 0;
-    put_pixel(grbw);
+    // RGB格式：构建24位GRB数据，ws2812_program_init会根据配置自动处理
+    // 数据格式：GRB (Green, Red, Blue)
+    uint32_t grb = ((uint32_t)g << 16) | ((uint32_t)r << 8) | ((uint32_t)b << 0);
+    put_pixel(grb);
 }
 
 static inline void put_off(void) {
