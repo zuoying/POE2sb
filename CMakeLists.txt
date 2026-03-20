@@ -64,6 +64,7 @@ include_directories(
 target_link_libraries(poe2gamepad
     pico_stdlib
     pico_rand
+    pico_multicore
     tinyusb_device
     tinyusb_host
     pico_pio_usb

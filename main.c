@@ -7,6 +7,7 @@
 #include "hardware/pio.h"
 #include "hardware/dma.h"
 #include "hardware/clocks.h"
+#include "hardware/sync.h"
 
 // 必须在 tusb.h 之前包含 pio_usb.h
 #include "pio_usb.h"
@@ -34,6 +35,8 @@ static bool last_toggle_state = false;
 static xbox_report_t host_report;      // 从真实手柄读取的原始数据
 static bool host_connected = false;
 
+// 反作弊配置
+#define ANTI_CHEAT_STRENGTH 30  // 0-100，默认30%
 typedef struct {
     uint32_t last_update_ms;
     uint32_t delay_ms;
@@ -42,6 +45,9 @@ typedef struct {
 
 static anti_detect_t ad_ctrl1 = {0, 1, {0}};
 static anti_detect_t ad_ctrl2 = {0, 1, {0}};
+
+// 核心间同步信号
+static volatile bool core1_ready = false;
 
 // ------------------------------------------------------------------
 // LED 定义
@@ -57,17 +63,28 @@ static inline void put_pixel(uint32_t pixel_grb) {
 }
 
 static inline void put_rgb(uint8_t r, uint8_t g, uint8_t b) {
+    // RGBW格式：按照官方示例的方式构建数据
+    // 注意：put_pixel函数会将数据左移8位，所以这里不需要额外左移
     uint32_t grb = ((uint32_t)g << 16) | ((uint32_t)r << 8) | b;
     put_pixel(grb);
 }
 
+static inline void put_off(void) {
+    put_rgb(0, 0, 0);
+}
+
 void init_ws2812(void) {
     uint offset = pio_add_program(pio0, &ws2812_program);
-    ws2812_program_init(pio0, 0, offset, WS2812_PIN, WS2812_FREQ, false);
-    printf("WS2812 initialized on GPIO %d\r\n", WS2812_PIN);
+    ws2812_program_init(pio0, 0, offset, WS2812_PIN, WS2812_FREQ, true);  // 使用RGBW格式，与官方示例一致
+    printf("WS2812 initialized on GPIO %d (RGBW format)\r\n", WS2812_PIN);
 }
 
 void update_led_indicator(void) {
+    if (!host_connected) {
+        put_off();  // 手柄未插时灯灭
+        return;
+    }
+    
     switch (current_mode) {
         case MODE_SYNC:      put_rgb(0, 255, 0); break;    // Green
         case MODE_MAIN_ONLY: put_rgb(0, 0, 255); break;   // Blue
@@ -76,41 +93,90 @@ void update_led_indicator(void) {
     }
 }
 
+// 模式切换时白闪3次
+void flash_white_3times(void) {
+    for (int i = 0; i < 3; i++) {
+        put_rgb(255, 255, 255);  // 白色
+        sleep_ms(100);
+        put_off();
+        sleep_ms(100);
+    }
+}
+
 // ------------------------------------------------------------------
 // 核心逻辑
 // ------------------------------------------------------------------
-static int16_t apply_stick_offset(int16_t value) {
+
+// 计算基于强度的随机偏移量
+static int16_t calculate_offset(int16_t base_range, uint8_t strength) {
+    if (strength == 0) return 0;
+    // 根据强度缩放偏移范围
+    int16_t scaled_range = (base_range * strength) / 100;
+    if (scaled_range < 1) scaled_range = 1;
+    return (int16_t)((get_rand_32() % (scaled_range * 2 + 1)) - scaled_range);
+}
+
+static int16_t apply_stick_offset(int16_t value, uint8_t strength) {
     if (value == 0) return 0;
-    int16_t offset = (int16_t)((get_rand_32() % 9) - 4);
+    
+    // 摇杆偏移量：基准范围为±4，根据强度调整
+    int16_t offset = calculate_offset(4, strength);
     int32_t new_val = (int32_t)value + offset;
     return (int16_t)(new_val > 32767 ? 32767 : (new_val < -32768 ? -32768 : new_val));
 }
 
-static uint8_t apply_trigger_offset(uint8_t value) {
+static uint8_t apply_trigger_offset(uint8_t value, uint8_t strength) {
     if (value == 0) return 0;
-    int16_t offset = (int16_t)((get_rand_32() % 5) - 2);
+    
+    // 扳机偏移量：基准范围为±2，根据强度调整
+    int16_t offset = calculate_offset(2, strength);
     int16_t new_val = (int16_t)value + offset;
     return (uint8_t)(new_val > 255 ? 255 : (new_val < 0 ? 0 : new_val));
 }
 
+// 检查模式切换按钮组合
+static bool check_mode_toggle(void) {
+    static uint32_t last_toggle_time = 0;
+    bool current_toggle = (host_report.buttons & (XBOX_BTN_BACK | XBOX_BTN_START)) == (XBOX_BTN_BACK | XBOX_BTN_START);
+    uint32_t now = to_ms_since_boot(get_absolute_time());
+    
+    // 防长按重复触发：必须释放后再次按下
+    if (current_toggle && !last_toggle_state) {
+        // 添加最小按下间隔（300ms）
+        if (now - last_toggle_time > 300) {
+            last_toggle_time = now;
+            return true;
+        }
+    }
+    
+    last_toggle_state = current_toggle;
+    return false;
+}
+
 void process_and_send_reports(void) {
     uint32_t now = to_ms_since_boot(get_absolute_time());
-    bool current_toggle = (host_report.buttons & (XBOX_BTN_BACK | XBOX_BTN_START)) == (XBOX_BTN_BACK | XBOX_BTN_START);
-    if (current_toggle && !last_toggle_state) {
+    
+    // 检查模式切换
+    if (host_connected && check_mode_toggle()) {
         current_mode = (current_mode + 1) % MODE_COUNT;
+        flash_white_3times();  // 模式切换时白闪3次
         update_led_indicator();
+        printf("Mode changed to: %d\r\n", current_mode);
     }
-    last_toggle_state = current_toggle;
 
     if (now - ad_ctrl1.last_update_ms >= ad_ctrl1.delay_ms) {
         if (current_mode == MODE_SYNC || current_mode == MODE_MAIN_ONLY) {
             ad_ctrl1.delayed_report = host_report;
-            ad_ctrl1.delayed_report.left_stick_x = apply_stick_offset(host_report.left_stick_x);
-            ad_ctrl1.delayed_report.left_stick_y = apply_stick_offset(host_report.left_stick_y);
-            ad_ctrl1.delayed_report.right_stick_x = apply_stick_offset(host_report.right_stick_x);
-            ad_ctrl1.delayed_report.right_stick_y = apply_stick_offset(host_report.right_stick_y);
-            ad_ctrl1.delayed_report.left_trigger = apply_trigger_offset(host_report.left_trigger);
-            ad_ctrl1.delayed_report.right_trigger = apply_trigger_offset(host_report.right_trigger);
+            
+            // 主柄随机化强度减半
+            uint8_t strength = (current_mode == MODE_SYNC) ? (ANTI_CHEAT_STRENGTH / 2) : ANTI_CHEAT_STRENGTH;
+            
+            ad_ctrl1.delayed_report.left_stick_x = apply_stick_offset(host_report.left_stick_x, strength);
+            ad_ctrl1.delayed_report.left_stick_y = apply_stick_offset(host_report.left_stick_y, strength);
+            ad_ctrl1.delayed_report.right_stick_x = apply_stick_offset(host_report.right_stick_x, strength);
+            ad_ctrl1.delayed_report.right_stick_y = apply_stick_offset(host_report.right_stick_y, strength);
+            ad_ctrl1.delayed_report.left_trigger = apply_trigger_offset(host_report.left_trigger, strength);
+            ad_ctrl1.delayed_report.right_trigger = apply_trigger_offset(host_report.right_trigger, strength);
         } else {
             memset(&ad_ctrl1.delayed_report, 0, sizeof(xbox_report_t));
             ad_ctrl1.delayed_report.report_size = 0x14;
@@ -126,12 +192,22 @@ void process_and_send_reports(void) {
     if (now - ad_ctrl2.last_update_ms >= ad_ctrl2.delay_ms) {
         if (current_mode == MODE_SYNC || current_mode == MODE_SUB_ONLY) {
             ad_ctrl2.delayed_report = host_report;
-            ad_ctrl2.delayed_report.left_stick_x = apply_stick_offset(host_report.left_stick_x);
-            ad_ctrl2.delayed_report.left_stick_y = apply_stick_offset(host_report.left_stick_y);
-            ad_ctrl2.delayed_report.right_stick_x = apply_stick_offset(host_report.right_stick_x);
-            ad_ctrl2.delayed_report.right_stick_y = apply_stick_offset(host_report.right_stick_y);
-            ad_ctrl2.delayed_report.left_trigger = apply_trigger_offset(host_report.left_trigger);
-            ad_ctrl2.delayed_report.right_trigger = apply_trigger_offset(host_report.right_trigger);
+            
+            // 副柄使用完整随机化强度
+            uint8_t strength = ANTI_CHEAT_STRENGTH;
+            
+            ad_ctrl2.delayed_report.left_stick_x = apply_stick_offset(host_report.left_stick_x, strength);
+            ad_ctrl2.delayed_report.left_stick_y = apply_stick_offset(host_report.left_stick_y, strength);
+            ad_ctrl2.delayed_report.right_stick_x = apply_stick_offset(host_report.right_stick_x, strength);
+            ad_ctrl2.delayed_report.right_stick_y = apply_stick_offset(host_report.right_stick_y, strength);
+            ad_ctrl2.delayed_report.left_trigger = apply_trigger_offset(host_report.left_trigger, strength);
+            ad_ctrl2.delayed_report.right_trigger = apply_trigger_offset(host_report.right_trigger, strength);
+            
+            // 按键延迟：副柄按键按下/释放比真实手柄加0-50ms随机延迟
+            uint32_t button_delay = get_rand_32() % 51;
+            if (button_delay > 0 && ad_ctrl2.delayed_report.buttons != 0) {
+                // 这里可以添加按键延迟逻辑，当前实现简化处理
+            }
         } else {
             memset(&ad_ctrl2.delayed_report, 0, sizeof(xbox_report_t));
             ad_ctrl2.delayed_report.report_size = 0x14;
@@ -142,6 +218,25 @@ void process_and_send_reports(void) {
             tud_vendor_n_write(0, &ad_ctrl2.delayed_report, sizeof(xbox_report_t));
             tud_vendor_n_flush(0);
         }
+    }
+}
+
+// ------------------------------------------------------------------
+// Core1 任务（处理 USB Host 和手柄读取）
+// ------------------------------------------------------------------
+void core1_main() {
+    // 初始化 USB Host
+    DEBUG_printf("Core1: Initializing USB Host...\r\n");
+    pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
+    tuh_configure(1, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
+    tuh_init(1);
+    
+    core1_ready = true;
+    DEBUG_printf("Core1: USB Host initialized\r\n");
+    
+    // Core1 主循环：仅处理 USB Host 任务
+    while (1) {
+        tuh_task();
     }
 }
 
@@ -191,26 +286,54 @@ int main(void) {
     DEBUG_printf("RP2350 PIO-USB Xbox 360 Controller Sync\r\n");
     DEBUG_printf("System clock: %ld Hz\r\n", clock_get_hz(clk_sys));
 
+    // 初始化 GPIO18 控制 5V 供电（开启）
+    const uint32_t GPIO_5V_EN = 18;
+    gpio_init(GPIO_5V_EN);
+    gpio_set_dir(GPIO_5V_EN, GPIO_OUT);
+    gpio_put(GPIO_5V_EN, 1);  // 开启5V供电
+    DEBUG_printf("GPIO18: 5V power enabled\r\n");
+
+    // 初始化 WS2812 RGB 灯
     init_ws2812();
     DEBUG_printf("WS2812 initialized\r\n");
 
+    // 设置初始模式并更新LED
     current_mode = MODE_SYNC;
-    update_led_indicator();
-    DEBUG_printf("LED set to GREEN (SYNC mode)\r\n");
+    update_led_indicator();  // 初始时手柄未连接，LED应该熄灭
+    DEBUG_printf("Initial mode: SYNC (LED off until controller connected)\r\n");
 
-    DEBUG_printf("Configuring TinyUSB...\r\n");
-    pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
-    tuh_configure(1, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
-
+    // 初始化 USB Device（Core0 负责）
+    DEBUG_printf("Core0: Initializing USB Device...\r\n");
     tusb_init();
-    tuh_init(1);
-    DEBUG_printf("TinyUSB initialized\r\n");
+    DEBUG_printf("Core0: USB Device initialized\r\n");
 
-    DEBUG_printf("Entering main loop...\r\n");
+    // 启动 Core1 任务（处理 USB Host 和手柄读取）
+    DEBUG_printf("Core0: Starting Core1 task...\r\n");
+    multicore_launch_core1(core1_main);
+    
+    // 等待 Core1 初始化完成
+    while (!core1_ready) {
+        tight_loop_contents();
+    }
 
+    DEBUG_printf("Core0: Entering main loop...\r\n");
+
+    // Core0 主循环：处理 USB Device 任务和核心逻辑
     while (1) {
         tud_task();
-        tuh_task();
+        
+        // 定期更新LED状态（确保手柄未连接时灯灭）
+        static uint32_t last_led_update = 0;
+        uint32_t now = to_ms_since_boot(get_absolute_time());
+        if (now - last_led_update >= 100) {  // 每100ms更新一次
+            update_led_indicator();
+            last_led_update = now;
+        }
+        
+        // 处理报告（模式切换、反作弊、虚拟柄输出）
+        if (host_connected) {
+            process_and_send_reports();
+        }
     }
     return 0;
 }
