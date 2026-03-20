@@ -33,6 +33,7 @@ typedef void * pipe_handle_t;
 #define CFG_TUD_VENDOR              2  // 支持2个Vendor接口
 #define CFG_TUD_VENDOR_RX_BUFSIZE   32  // 每个接口的接收缓冲区大小
 #define CFG_TUD_VENDOR_TX_BUFSIZE   32  // 每个接口的发送缓冲区大小
+#define CFG_TUD_HID                 0  // 不使用标准HID，使用Vendor特定的XInput
 
 // HOST 配置
 #define CFG_TUH_ENABLED             1
