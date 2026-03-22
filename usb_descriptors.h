@@ -7,6 +7,9 @@
 #define XBOX_VID 0x045E  // Microsoft Corporation
 #define XBOX_PID 0x028E  // Xbox 360 Controller for Windows (标准PID)
 
+// XInput 协议版本
+#define XINPUT_VERSION 0x114  // XInput 1.4
+
 // XInput 接口类 (Vendor Specific)
 #define XINPUT_CLASS 0xFF
 #define XINPUT_SUBCLASS 0x5D
