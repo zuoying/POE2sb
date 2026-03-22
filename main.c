@@ -47,8 +47,7 @@ typedef struct {
     xbox_report_t delayed_report;
 } anti_detect_t;
 
-static anti_detect_t ad_ctrl1 = {0, 1, {0}};
-static anti_detect_t ad_ctrl2 = {0, 1, {0}};
+static anti_detect_t ad_ctrl = {0, 1, {0}};
 
 // 核心间同步信号
 static volatile bool core1_ready = false;
@@ -182,67 +181,29 @@ void process_and_send_reports(void) {
         printf("Mode changed to: %d\r\n", current_mode);
     }
 
-    if (now - ad_ctrl1.last_update_ms >= ad_ctrl1.delay_ms) {
-        if (current_mode == MODE_SYNC || current_mode == MODE_MAIN_ONLY) {
-            ad_ctrl1.delayed_report = host_report;
-            
-            // 主柄随机化强度减半
-            uint8_t strength = (current_mode == MODE_SYNC) ? (ANTI_CHEAT_STRENGTH / 2) : ANTI_CHEAT_STRENGTH;
-            
-            ad_ctrl1.delayed_report.left_stick_x = apply_stick_offset(host_report.left_stick_x, strength);
-            ad_ctrl1.delayed_report.left_stick_y = apply_stick_offset(host_report.left_stick_y, strength);
-            ad_ctrl1.delayed_report.right_stick_x = apply_stick_offset(host_report.right_stick_x, strength);
-            ad_ctrl1.delayed_report.right_stick_y = apply_stick_offset(host_report.right_stick_y, strength);
-            ad_ctrl1.delayed_report.left_trigger = apply_trigger_offset(host_report.left_trigger, strength);
-            ad_ctrl1.delayed_report.right_trigger = apply_trigger_offset(host_report.right_trigger, strength);
-        } else {
-            memset(&ad_ctrl1.delayed_report, 0, sizeof(xbox_report_t));
-        }
-        // 确保报告ID和大小正确
-        ad_ctrl1.delayed_report.report_id = XINPUT_REPORT_ID;
-        ad_ctrl1.delayed_report.report_size = 0x14;  // 20字节，Xbox 360标准报告大小
+    if (now - ad_ctrl.last_update_ms >= ad_ctrl.delay_ms) {
+        // 始终发送报告，应用随机化强度
+        ad_ctrl.delayed_report = host_report;
         
-        ad_ctrl1.delay_ms = (get_rand_32() % 6) + 1;
-        ad_ctrl1.last_update_ms = now;
+        uint8_t strength = ANTI_CHEAT_STRENGTH;
+        
+        ad_ctrl.delayed_report.left_stick_x = apply_stick_offset(host_report.left_stick_x, strength);
+        ad_ctrl.delayed_report.left_stick_y = apply_stick_offset(host_report.left_stick_y, strength);
+        ad_ctrl.delayed_report.right_stick_x = apply_stick_offset(host_report.right_stick_x, strength);
+        ad_ctrl.delayed_report.right_stick_y = apply_stick_offset(host_report.right_stick_y, strength);
+        ad_ctrl.delayed_report.left_trigger = apply_trigger_offset(host_report.left_trigger, strength);
+        ad_ctrl.delayed_report.right_trigger = apply_trigger_offset(host_report.right_trigger, strength);
+        
+        // 确保报告ID和大小正确
+        ad_ctrl.delayed_report.report_id = XINPUT_REPORT_ID;
+        ad_ctrl.delayed_report.report_size = 0x14;  // 20字节，Xbox 360标准报告大小
+        
+        ad_ctrl.delay_ms = (get_rand_32() % 6) + 1;
+        ad_ctrl.last_update_ms = now;
         if (tud_ready()) {
             // 使用Vendor特定设备函数发送控制器报告（接口0）
-            tud_vendor_n_write(0, &ad_ctrl1.delayed_report, sizeof(xbox_report_t));
+            tud_vendor_n_write(0, &ad_ctrl.delayed_report, sizeof(xbox_report_t));
             tud_vendor_n_flush(0);
-        }
-    }
-
-    if (now - ad_ctrl2.last_update_ms >= ad_ctrl2.delay_ms) {
-        if (current_mode == MODE_SYNC || current_mode == MODE_SUB_ONLY) {
-            ad_ctrl2.delayed_report = host_report;
-            
-            // 副柄使用完整随机化强度
-            uint8_t strength = ANTI_CHEAT_STRENGTH;
-            
-            ad_ctrl2.delayed_report.left_stick_x = apply_stick_offset(host_report.left_stick_x, strength);
-            ad_ctrl2.delayed_report.left_stick_y = apply_stick_offset(host_report.left_stick_y, strength);
-            ad_ctrl2.delayed_report.right_stick_x = apply_stick_offset(host_report.right_stick_x, strength);
-            ad_ctrl2.delayed_report.right_stick_y = apply_stick_offset(host_report.right_stick_y, strength);
-            ad_ctrl2.delayed_report.left_trigger = apply_trigger_offset(host_report.left_trigger, strength);
-            ad_ctrl2.delayed_report.right_trigger = apply_trigger_offset(host_report.right_trigger, strength);
-            
-            // 按键延迟：副柄按键按下/释放比真实手柄加0-50ms随机延迟
-            uint32_t button_delay = get_rand_32() % 51;
-            if (button_delay > 0 && ad_ctrl2.delayed_report.buttons != 0) {
-                // 这里可以添加按键延迟逻辑，当前实现简化处理
-            }
-        } else {
-            memset(&ad_ctrl2.delayed_report, 0, sizeof(xbox_report_t));
-        }
-        // 确保报告ID和大小正确
-        ad_ctrl2.delayed_report.report_id = XINPUT_REPORT_ID;
-        ad_ctrl2.delayed_report.report_size = 0x14;  // 20字节，Xbox 360标准报告大小
-        
-        ad_ctrl2.delay_ms = (get_rand_32() % 6) + 1;
-        ad_ctrl2.last_update_ms = now;
-        if (tud_ready()) {
-            // 使用Vendor特定设备函数发送控制器报告（接口1）
-            tud_vendor_n_write(1, &ad_ctrl2.delayed_report, sizeof(xbox_report_t));
-            tud_vendor_n_flush(1);
         }
     }
 }
