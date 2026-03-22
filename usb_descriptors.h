@@ -3,9 +3,9 @@
 
 #include "tusb.h"
 
-// Xbox 360 控制器 PID/VID - 使用兼容的PID
+// Xbox 360 控制器 PID/VID - 使用标准的Xbox 360控制器PID
 #define XBOX_VID 0x045E  // Microsoft Corporation
-#define XBOX_PID 0x02A1  // Xbox 360 Controller for Windows
+#define XBOX_PID 0x028E  // Xbox 360 Controller for Windows (标准PID)
 
 // XInput 接口类 (Vendor Specific)
 #define XINPUT_CLASS 0xFF
