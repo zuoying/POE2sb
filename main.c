@@ -403,29 +403,98 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
     if (type == 0x01 && recipient == 0x01) { // Class + Interface
         switch (request->bRequest) {
             case 0x01: // SET_REPORT
-                // 简单接受请求但不处理
-                uint8_t buffer[32];
+                // 处理SET_REPORT请求（用于震动和LED控制）
+                DEBUG_printf("DEBUG: XInput SET_REPORT request received\r\n");
+                uint8_t buffer[32] = {0};
                 if (request->wLength > sizeof(buffer)) return false;
+                
+                // 告诉TinyUSB我们准备好接收数据
                 tud_control_xfer(rhport, request, buffer, request->wLength);
                 return true;
                 
             case 0x02: // GET_REPORT
-                // 返回空数据
-                uint8_t empty_response[32] = {0};
-                tud_control_xfer(rhport, request, empty_response, sizeof(empty_response));
+                // 处理GET_REPORT请求（用于获取输入数据或功能报告）
+                DEBUG_printf("DEBUG: XInput GET_REPORT request received\r\n");
+                
+                // 根据请求类型返回适当的数据
+                uint8_t report_data[32] = {0};
+                
+                // 对于Xbox 360控制器，功能报告应该包含设备状态信息
+                if ((request->wValue & 0xFF00) == 0x0200) { // Feature report
+                    // 设置基本的设备信息
+                    report_data[0] = 0x00;  // Report ID
+                    report_data[1] = 0x14;  // Report size (20 bytes)
+                    // 其他字节保持0
+                }
+                
+                tud_control_xfer(rhport, request, report_data, request->wLength);
                 return true;
                 
             case 0x03: // SET_IDLE
+                // 处理SET_IDLE请求
+                DEBUG_printf("DEBUG: XInput SET_IDLE request received\r\n");
                 tud_control_xfer(rhport, request, NULL, 0);
                 return true;
                 
             case 0x04: // GET_IDLE
+                // 处理GET_IDLE请求
+                DEBUG_printf("DEBUG: XInput GET_IDLE request received\r\n");
                 uint8_t idle_response = 0;
                 tud_control_xfer(rhport, request, &idle_response, 1);
+                return true;
+                
+            case 0x05: // SET_PROTOCOL
+                // 处理SET_PROTOCOL请求
+                DEBUG_printf("DEBUG: XInput SET_PROTOCOL request received\r\n");
+                tud_control_xfer(rhport, request, NULL, 0);
+                return true;
+                
+            case 0x06: // GET_PROTOCOL
+                // 处理GET_PROTOCOL请求
+                DEBUG_printf("DEBUG: XInput GET_PROTOCOL request received\r\n");
+                uint8_t protocol_response = 0;
+                tud_control_xfer(rhport, request, &protocol_response, 1);
+                return true;
+        }
+    }
+    
+    // 处理标准的USB控制请求
+    if (type == 0x00) { // Standard request
+        switch (request->bRequest) {
+            case 0x06: // GET_DESCRIPTOR
+                // 让TinyUSB处理描述符请求
+                DEBUG_printf("DEBUG: Standard GET_DESCRIPTOR request received\r\n");
+                return false;
+                
+            case 0x09: // SET_CONFIGURATION
+                // 处理SET_CONFIGURATION请求
+                DEBUG_printf("DEBUG: Standard SET_CONFIGURATION request received\r\n");
+                tud_control_xfer(rhport, request, NULL, 0);
+                return true;
+                
+            case 0x08: // GET_CONFIGURATION
+                // 处理GET_CONFIGURATION请求
+                DEBUG_printf("DEBUG: Standard GET_CONFIGURATION request received\r\n");
+                uint8_t config_response = 0x01;
+                tud_control_xfer(rhport, request, &config_response, 1);
+                return true;
+                
+            case 0x0A: // GET_INTERFACE
+                // 处理GET_INTERFACE请求
+                DEBUG_printf("DEBUG: Standard GET_INTERFACE request received\r\n");
+                uint8_t interface_response = 0x00;
+                tud_control_xfer(rhport, request, &interface_response, 1);
+                return true;
+                
+            case 0x0B: // SET_INTERFACE
+                // 处理SET_INTERFACE请求
+                DEBUG_printf("DEBUG: Standard SET_INTERFACE request received\r\n");
+                tud_control_xfer(rhport, request, NULL, 0);
                 return true;
         }
     }
     
     // 默认情况下，让TinyUSB处理未识别的请求
+    DEBUG_printf("DEBUG: Unhandled request, passing to TinyUSB\r\n");
     return false;
 }
