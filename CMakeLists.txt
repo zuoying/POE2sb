@@ -19,8 +19,6 @@ pico_sdk_init()
 
 # 增加全局定义，确保所有库都能识别 RP2350
 add_compile_definitions(PICO_RP2350=1)
-add_compile_definitions(CFG_TUSB_MCU=111)
-add_compile_definitions(CFG_TUSB_OS=4)
 
 # 强制指定 RP2350 平台
 # (已经作为缓存变量在 include 之前设置)
