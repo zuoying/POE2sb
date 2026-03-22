@@ -131,11 +131,11 @@ uint8_t const desc_configuration[] = {
     0x00,        // iInterface
 
     // HID Descriptor
-    9, TUSB_DESC_HID,
+    9, 0x21,     // bDescriptorType (HID)
     0x11, 0x01,  // bcdHID (v1.11)
     0x00,        // bCountryCode
     0x01,        // bNumDescriptors
-    TUSB_DESC_REPORT, // bDescriptorType
+    0x22,        // bDescriptorType (Report)
     U16_TO_U8S_LE(HID_REPORT_DESCRIPTOR_LEN), // wDescriptorLength
 
     // Endpoint IN: Controller 1 Input
@@ -163,11 +163,11 @@ uint8_t const desc_configuration[] = {
     0x00,        // iInterface
 
     // HID Descriptor
-    9, TUSB_DESC_HID,
+    9, 0x21,     // bDescriptorType (HID)
     0x11, 0x01,  // bcdHID (v1.11)
     0x00,        // bCountryCode
     0x01,        // bNumDescriptors
-    TUSB_DESC_REPORT, // bDescriptorType
+    0x22,        // bDescriptorType (Report)
     U16_TO_U8S_LE(HID_REPORT_DESCRIPTOR_LEN), // wDescriptorLength
 
     // Endpoint IN: Controller 2 Input
