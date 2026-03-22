@@ -27,7 +27,8 @@ uint8_t const * tud_descriptor_device_cb(void) {
 // ------------------------------------------------------------------
 // 配置描述符 (双 Xbox 360 控制器 - 使用Vendor特定类，XInput协议)
 // ------------------------------------------------------------------
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + 2 * (9 + 7 + 7)) // 1 config + 2 interfaces + 4 endpoints
+// 配置描述符总长度：9 + (9+7+7)*2 = 9 + 23*2 = 55字节
+#define CONFIG_TOTAL_LEN 55
 
 uint8_t const desc_configuration[] = {
     // Configuration Descriptor
