@@ -103,7 +103,12 @@ uint8_t const hid_report_descriptor[] = {
 // ------------------------------------------------------------------
 // 配置描述符 (双 Xbox 360 控制器 - 使用HID类)
 // ------------------------------------------------------------------
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + 2 * (TUD_HID_DESC_LEN + 7 + 7)) // 1 config + 2 HID interfaces + 4 endpoints
+// 计算配置描述符总长度
+// 配置描述符: 9字节
+// 每个HID接口: 接口(9) + HID(9) + IN端点(7) + OUT端点(7) = 32字节
+// 两个接口: 2 * 32 = 64字节
+// 总长度: 9 + 64 = 73字节
+#define CONFIG_TOTAL_LEN (9 + 2 * (9 + 9 + 7 + 7)) // 1 config + 2 HID interfaces + 4 endpoints
 
 uint8_t const desc_configuration[] = {
     // Configuration Descriptor
@@ -116,10 +121,68 @@ uint8_t const desc_configuration[] = {
     0xFA, // MaxPower 500mA
 
     // Interface 0: Xbox 360 Controller 1 (HID类)
-    TUD_HID_DESC_INOUT(0x00, 0x81, 0x01, 32, 0x01, HID_REPORT_DESCRIPTOR_LEN, 0x01),
+    9, TUSB_DESC_INTERFACE,
+    0x00,        // bInterfaceNumber
+    0x00,        // bAlternateSetting
+    0x02,        // bNumEndpoints (IN + OUT)
+    0x03,        // bInterfaceClass (HID)
+    0x00,        // bInterfaceSubClass
+    0x00,        // bInterfaceProtocol
+    0x00,        // iInterface
+
+    // HID Descriptor
+    9, TUSB_DESC_HID,
+    0x11, 0x01,  // bcdHID (v1.11)
+    0x00,        // bCountryCode
+    0x01,        // bNumDescriptors
+    TUSB_DESC_REPORT, // bDescriptorType
+    U16_TO_U8S_LE(HID_REPORT_DESCRIPTOR_LEN), // wDescriptorLength
+
+    // Endpoint IN: Controller 1 Input
+    7, TUSB_DESC_ENDPOINT,
+    0x81,        // bEndpointAddress (IN 1)
+    0x03,        // bmAttributes (Interrupt)
+    U16_TO_U8S_LE(32), // wMaxPacketSize
+    0x01,        // bInterval
+
+    // Endpoint OUT: Controller 1 Output (Rumble/LED)
+    7, TUSB_DESC_ENDPOINT,
+    0x01,        // bEndpointAddress (OUT 1)
+    0x03,        // bmAttributes (Interrupt)
+    U16_TO_U8S_LE(32), // wMaxPacketSize
+    0x08,        // bInterval
 
     // Interface 1: Xbox 360 Controller 2 (HID类)
-    TUD_HID_DESC_INOUT(0x01, 0x82, 0x02, 32, 0x01, HID_REPORT_DESCRIPTOR_LEN, 0x01),
+    9, TUSB_DESC_INTERFACE,
+    0x01,        // bInterfaceNumber
+    0x00,        // bAlternateSetting
+    0x02,        // bNumEndpoints (IN + OUT)
+    0x03,        // bInterfaceClass (HID)
+    0x00,        // bInterfaceSubClass
+    0x00,        // bInterfaceProtocol
+    0x00,        // iInterface
+
+    // HID Descriptor
+    9, TUSB_DESC_HID,
+    0x11, 0x01,  // bcdHID (v1.11)
+    0x00,        // bCountryCode
+    0x01,        // bNumDescriptors
+    TUSB_DESC_REPORT, // bDescriptorType
+    U16_TO_U8S_LE(HID_REPORT_DESCRIPTOR_LEN), // wDescriptorLength
+
+    // Endpoint IN: Controller 2 Input
+    7, TUSB_DESC_ENDPOINT,
+    0x82,        // bEndpointAddress (IN 2)
+    0x03,        // bmAttributes (Interrupt)
+    U16_TO_U8S_LE(32), // wMaxPacketSize
+    0x01,        // bInterval
+
+    // Endpoint OUT: Controller 2 Output (Rumble/LED)
+    7, TUSB_DESC_ENDPOINT,
+    0x02,        // bEndpointAddress (OUT 2)
+    0x03,        // bmAttributes (Interrupt)
+    U16_TO_U8S_LE(32), // wMaxPacketSize
+    0x08,        // bInterval
 };
 
 uint8_t const * tud_descriptor_configuration_cb(uint8_t index) {
