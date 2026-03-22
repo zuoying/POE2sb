@@ -201,9 +201,28 @@ void process_and_send_reports(void) {
         ad_ctrl.delay_ms = (get_rand_32() % 6) + 1;
         ad_ctrl.last_update_ms = now;
         if (tud_ready()) {
-            // 使用Vendor特定设备函数发送控制器报告（接口0）
-            tud_vendor_n_write(0, &ad_ctrl.delayed_report, sizeof(xbox_report_t));
-            tud_vendor_n_flush(0);
+            // 使用标准HID类函数发送控制器报告
+            // 创建标准HID游戏手柄报告格式
+            uint8_t hid_report[20] = {0};
+            hid_report[0] = 0x01; // Report ID
+            
+            // 复制按钮状态（16个按钮）
+            hid_report[1] = (ad_ctrl.delayed_report.buttons & 0xFF);
+            hid_report[2] = (ad_ctrl.delayed_report.buttons >> 8) & 0xFF;
+            
+            // Hat switch (我们不支持，设置为中心位置)
+            hid_report[3] = 0x08; // Hat switch: 中心位置
+            
+            // Axes (将Xbox 360的16位摇杆值转换为8位HID值)
+            hid_report[4] = (uint8_t)(ad_ctrl.delayed_report.left_stick_x >> 8);
+            hid_report[5] = (uint8_t)(ad_ctrl.delayed_report.left_stick_y >> 8);
+            hid_report[6] = (uint8_t)(ad_ctrl.delayed_report.right_stick_x >> 8);
+            hid_report[7] = (uint8_t)(ad_ctrl.delayed_report.right_stick_y >> 8);
+            hid_report[8] = ad_ctrl.delayed_report.left_trigger;
+            hid_report[9] = ad_ctrl.delayed_report.right_trigger;
+            
+            // 发送HID报告
+            tud_hid_report(0x01, hid_report, sizeof(hid_report));
         }
     }
 }
@@ -328,134 +347,41 @@ int main(void) {
 }
 
 // ------------------------------------------------------------------
-// Vendor 特定类回调函数 - Xbox 360 控制器(XInput)
+// HID 类回调函数 - 标准游戏手柄
 // ------------------------------------------------------------------
 
-// 当从PC接收到数据时调用（如震动和LED控制命令）
-void tud_vendor_rx_cb(uint8_t itf) {
-    uint8_t buffer[32];
-    uint16_t len = tud_vendor_n_read(itf, buffer, sizeof(buffer));
-    DEBUG_printf("DEBUG: Vendor RX callback for interface %d, len=%d\r\n", itf, len);
-    // 简单忽略震动和LED控制命令，我们不支持这些功能
-}
-
-// 当数据发送到PC完成时调用
-void tud_vendor_tx_cb(uint8_t itf, uint32_t sent_bytes) {
+// 当从PC接收到HID报告时调用（如震动命令）
+void tud_hid_report_received_cb(uint8_t itf, uint8_t report_id, uint8_t const* report, uint16_t len) {
     (void) itf;
-    (void) sent_bytes;
-    DEBUG_printf("DEBUG: Vendor TX callback for interface %d, sent=%d bytes\r\n", itf, sent_bytes);
-    // 数据发送完成后不需要特别处理
+    (void) report_id;
+    (void) report;
+    (void) len;
+    
+    // 简单忽略震动命令，我们不支持震动功能
+    DEBUG_printf("DEBUG: HID report received\r\n");
 }
 
-// USB控制请求处理 - Xbox 360控制器(XInput)识别的关键
-bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const * request) {
-    // 忽略数据阶段
-    if (stage != CONTROL_STAGE_SETUP) return true;
+// 当PC请求设置HID报告时调用
+void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
+    (void) itf;
+    (void) report_id;
+    (void) report_type;
+    (void) buffer;
+    (void) bufsize;
     
-    DEBUG_printf("DEBUG: Vendor control request - bmRequestType=%02x, bRequest=%02x, wValue=%04x, wIndex=%04x, wLength=%04x\r\n", 
-                request->bmRequestType, request->bRequest, request->wValue, request->wIndex, request->wLength);
+    // 简单忽略设置报告请求
+    DEBUG_printf("DEBUG: HID set report request received\r\n");
+}
+
+// 当PC请求获取HID报告时调用
+uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
+    (void) itf;
+    (void) report_id;
+    (void) report_type;
+    (void) buffer;
+    (void) reqlen;
     
-    // 直接解析请求类型
-    uint8_t direction = (request->bmRequestType >> 7) & 0x01;
-    uint8_t type = (request->bmRequestType >> 5) & 0x03;
-    uint8_t recipient = request->bmRequestType & 0x1F;
-    
-    // XInput协议使用的是Class + Interface类型的请求
-    if (type == 0x01 && recipient == 0x01) { // Class + Interface
-        switch (request->bRequest) {
-            case 0x01: // SET_REPORT
-                // 处理SET_REPORT请求（用于震动和LED控制）
-                DEBUG_printf("DEBUG: XInput SET_REPORT request received\r\n");
-                uint8_t buffer[32] = {0};
-                if (request->wLength > sizeof(buffer)) return false;
-                
-                // 告诉TinyUSB我们准备好接收数据
-                tud_control_xfer(rhport, request, buffer, request->wLength);
-                return true;
-                
-            case 0x02: // GET_REPORT
-                // 处理GET_REPORT请求（用于获取输入数据或功能报告）
-                DEBUG_printf("DEBUG: XInput GET_REPORT request received\r\n");
-                
-                // 根据请求类型返回适当的数据
-                uint8_t report_data[32] = {0};
-                
-                // 对于Xbox 360控制器，功能报告应该包含设备状态信息
-                if ((request->wValue & 0xFF00) == 0x0200) { // Feature report
-                    // 设置基本的设备信息
-                    report_data[0] = 0x00;  // Report ID
-                    report_data[1] = 0x14;  // Report size (20 bytes)
-                    // 其他字节保持0
-                }
-                
-                tud_control_xfer(rhport, request, report_data, request->wLength);
-                return true;
-                
-            case 0x03: // SET_IDLE
-                // 处理SET_IDLE请求
-                DEBUG_printf("DEBUG: XInput SET_IDLE request received\r\n");
-                tud_control_xfer(rhport, request, NULL, 0);
-                return true;
-                
-            case 0x04: // GET_IDLE
-                // 处理GET_IDLE请求
-                DEBUG_printf("DEBUG: XInput GET_IDLE request received\r\n");
-                uint8_t idle_response = 0;
-                tud_control_xfer(rhport, request, &idle_response, 1);
-                return true;
-                
-            case 0x05: // SET_PROTOCOL
-                // 处理SET_PROTOCOL请求
-                DEBUG_printf("DEBUG: XInput SET_PROTOCOL request received\r\n");
-                tud_control_xfer(rhport, request, NULL, 0);
-                return true;
-                
-            case 0x06: // GET_PROTOCOL
-                // 处理GET_PROTOCOL请求
-                DEBUG_printf("DEBUG: XInput GET_PROTOCOL request received\r\n");
-                uint8_t protocol_response = 0;
-                tud_control_xfer(rhport, request, &protocol_response, 1);
-                return true;
-        }
-    }
-    
-    // 处理标准的USB控制请求
-    if (type == 0x00) { // Standard request
-        switch (request->bRequest) {
-            case 0x06: // GET_DESCRIPTOR
-                // 让TinyUSB处理描述符请求
-                DEBUG_printf("DEBUG: Standard GET_DESCRIPTOR request received\r\n");
-                return false;
-                
-            case 0x09: // SET_CONFIGURATION
-                // 处理SET_CONFIGURATION请求
-                DEBUG_printf("DEBUG: Standard SET_CONFIGURATION request received\r\n");
-                tud_control_xfer(rhport, request, NULL, 0);
-                return true;
-                
-            case 0x08: // GET_CONFIGURATION
-                // 处理GET_CONFIGURATION请求
-                DEBUG_printf("DEBUG: Standard GET_CONFIGURATION request received\r\n");
-                uint8_t config_response = 0x01;
-                tud_control_xfer(rhport, request, &config_response, 1);
-                return true;
-                
-            case 0x0A: // GET_INTERFACE
-                // 处理GET_INTERFACE请求
-                DEBUG_printf("DEBUG: Standard GET_INTERFACE request received\r\n");
-                uint8_t interface_response = 0x00;
-                tud_control_xfer(rhport, request, &interface_response, 1);
-                return true;
-                
-            case 0x0B: // SET_INTERFACE
-                // 处理SET_INTERFACE请求
-                DEBUG_printf("DEBUG: Standard SET_INTERFACE request received\r\n");
-                tud_control_xfer(rhport, request, NULL, 0);
-                return true;
-        }
-    }
-    
-    // 默认情况下，让TinyUSB处理未识别的请求
-    DEBUG_printf("DEBUG: Unhandled request, passing to TinyUSB\r\n");
-    return false;
+    // 返回0表示没有数据
+    DEBUG_printf("DEBUG: HID get report request received\r\n");
+    return 0;
 }
