@@ -23,9 +23,10 @@ typedef void * pipe_handle_t;
 
 // DEVICE 配置
 #define CFG_TUD_ENABLED             1
-#define CFG_TUD_VENDOR              0  // 禁用Vendor特定类
-#define CFG_TUD_HID                 2  // 支持2个HID接口（Xbox 360控制器）
-#define CFG_TUD_HID_EP_BUFSIZE      32  // 每个HID接口的端点缓冲区大小
+#define CFG_TUD_VENDOR              2  // 支持2个Vendor接口（Xbox 360控制器，使用XInput协议）
+#define CFG_TUD_VENDOR_RX_BUFSIZE   32  // 每个接口的接收缓冲区大小
+#define CFG_TUD_VENDOR_TX_BUFSIZE   32  // 每个接口的发送缓冲区大小
+#define CFG_TUD_HID                 0  // 禁用标准HID类
 
 // HOST 配置
 #define CFG_TUH_ENABLED             1
