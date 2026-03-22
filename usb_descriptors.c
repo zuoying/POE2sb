@@ -25,22 +25,22 @@ uint8_t const * tud_descriptor_device_cb(void) {
 }
 
 // ------------------------------------------------------------------
-// 配置描述符 (双 Xbox 360 控制器 - 使用Vendor特定类，XInput协议)
+// 配置描述符 (单个 Xbox 360 控制器 - 使用Vendor特定类，XInput协议)
 // ------------------------------------------------------------------
-// 配置描述符总长度：9 + (9+7+7)*2 = 9 + 23*2 = 55字节
-#define CONFIG_TOTAL_LEN 55
+// 配置描述符总长度：9 + (9+7+7) = 9 + 23 = 32字节
+#define CONFIG_TOTAL_LEN 32
 
 uint8_t const desc_configuration[] = {
     // Configuration Descriptor
     9, TUSB_DESC_CONFIGURATION,
     U16_TO_U8S_LE(CONFIG_TOTAL_LEN),
-    0x02, // 2 Interfaces
+    0x01, // 1 Interface
     0x01, // Configuration Value
     0x00, // Index of string descriptor
     0x80, // Attributes: Bus Powered only
     0xFA, // MaxPower 500mA
 
-    // Interface 0: Xbox 360 Controller 1 (XInput协议)
+    // Interface 0: Xbox 360 Controller (XInput协议)
     9, TUSB_DESC_INTERFACE,
     0x00, // bInterfaceNumber
     0x00, // bAlternateSetting
@@ -50,40 +50,16 @@ uint8_t const desc_configuration[] = {
     0x01, // bInterfaceProtocol: XInput Protocol
     0x00, // iInterface
 
-    // Endpoint IN: Controller 1 Input
+    // Endpoint IN: Controller Input
     7, TUSB_DESC_ENDPOINT,
     0x81, // bEndpointAddress (IN 1)
     0x03, // bmAttributes (Interrupt)
     U16_TO_U8S_LE(32),
     0x01, // bInterval (1ms)
 
-    // Endpoint OUT: Controller 1 Output (Rumble/LED)
+    // Endpoint OUT: Controller Output (Rumble/LED)
     7, TUSB_DESC_ENDPOINT,
     0x01, // bEndpointAddress (OUT 1)
-    0x03, // bmAttributes (Interrupt)
-    U16_TO_U8S_LE(32),
-    0x08, // bInterval (8ms)
-
-    // Interface 1: Xbox 360 Controller 2 (XInput协议)
-    9, TUSB_DESC_INTERFACE,
-    0x01, // bInterfaceNumber
-    0x00, // bAlternateSetting
-    0x02, // bNumEndpoints (IN + OUT)
-    0xFF, // bInterfaceClass: Vendor Specific
-    0x5D, // bInterfaceSubClass: Xbox 360 Controller (XInput)
-    0x01, // bInterfaceProtocol: XInput Protocol
-    0x00, // iInterface
-
-    // Endpoint IN: Controller 2 Input
-    7, TUSB_DESC_ENDPOINT,
-    0x82, // bEndpointAddress (IN 2)
-    0x03, // bmAttributes (Interrupt)
-    U16_TO_U8S_LE(32),
-    0x01, // bInterval (1ms)
-
-    // Endpoint OUT: Controller 2 Output (Rumble/LED)
-    7, TUSB_DESC_ENDPOINT,
-    0x02, // bEndpointAddress (OUT 2)
     0x03, // bmAttributes (Interrupt)
     U16_TO_U8S_LE(32),
     0x08, // bInterval (8ms)
