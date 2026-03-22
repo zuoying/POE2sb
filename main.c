@@ -205,8 +205,8 @@ void process_and_send_reports(void) {
         ad_ctrl1.delay_ms = (get_rand_32() % 6) + 1;
         ad_ctrl1.last_update_ms = now;
         if (tud_ready()) {
-            // 使用HID类函数发送控制器报告
-            tud_hid_report(0, XINPUT_REPORT_ID, &ad_ctrl1.delayed_report, sizeof(xbox_report_t));
+            // 使用支持多接口的HID类函数发送控制器报告（接口0）
+            tud_hid_n_report(0, XINPUT_REPORT_ID, &ad_ctrl1.delayed_report, sizeof(xbox_report_t));
         }
     }
 
@@ -239,8 +239,8 @@ void process_and_send_reports(void) {
         ad_ctrl2.delay_ms = (get_rand_32() % 6) + 1;
         ad_ctrl2.last_update_ms = now;
         if (tud_ready()) {
-            // 使用HID类函数发送控制器报告
-            tud_hid_report(1, XINPUT_REPORT_ID, &ad_ctrl2.delayed_report, sizeof(xbox_report_t));
+            // 使用支持多接口的HID类函数发送控制器报告（接口1）
+            tud_hid_n_report(1, XINPUT_REPORT_ID, &ad_ctrl2.delayed_report, sizeof(xbox_report_t));
         }
     }
 }
