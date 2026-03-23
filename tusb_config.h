@@ -3,35 +3,30 @@
 
 #include <stdint.h>
 
-// 不再手动定义 CFG_TUSB_MCU 和 CFG_TUSB_OS，让 Pico SDK 自动设置
-// 这些宏在命令行中由 CMake 自动生成，避免重复定义警告
+#define CFG_TUSB_OS               OPT_OS_PICO
 
-// 核心修复：定义 TinyUSB PIO-USB 必须的类型
-#ifndef _PIPE_HANDLE_T_
-#define _PIPE_HANDLE_T_
-typedef void * pipe_handle_t;
-#endif
+#define CFG_TUSB_MEM_SECTION
+#define CFG_TUSB_MEM_ALIGN        __attribute__((aligned(4)))
 
-// 端点0大小 (必须定义)
-#ifndef CFG_TUD_ENDPOINT0_SIZE
-#define CFG_TUD_ENDPOINT0_SIZE       64
-#endif
+#define CFG_TUD_ENDPOINT0_SIZE    64
 
-// 端口模式配置 - Port0是设备(连接PC), Port1是主机(连接手柄)
-#define CFG_TUSB_RHPORT0_MODE       OPT_MODE_DEVICE
-#define CFG_TUSB_RHPORT1_MODE       (OPT_MODE_HOST | OPT_MODE_FULL_SPEED)
+#define CFG_TUD_ENABLED           1
+#define CFG_TUD_HID               1
+#define CFG_TUD_HID_EP_BUFSIZE    32
 
-// DEVICE 配置
-#define CFG_TUD_ENABLED             1
-#define CFG_TUD_VENDOR              0  // 禁用Vendor特定类
-#define CFG_TUD_HID                 1  // 启用1个HID接口（标准游戏手柄）
-#define CFG_TUD_HID_EP_BUFSIZE      32  // HID端点缓冲区大小
-
-// HOST 配置
-#define CFG_TUH_ENABLED             1
-#define CFG_TUH_RPI_PIO_USB         1 
-#define CFG_TUH_HID                 1 
-#define CFG_TUH_DEVICE_MAX          2
+#define CFG_TUH_ENABLED           1
+#define CFG_TUH_RPI_PIO_USB       1
+#define CFG_TUH_HID               1
+#define CFG_TUH_DEVICE_MAX        2
 #define CFG_TUH_ENUMERATION_BUFSIZE 256
+#define CFG_TUH_HID_EPIN_BUFSIZE  64
+#define CFG_TUH_HID_EPOUT_BUFSIZE 64
+
+#define CFG_TUSB_RHPORT0_MODE     OPT_MODE_DEVICE
+#define CFG_TUSB_RHPORT1_MODE     (OPT_MODE_HOST | OPT_MODE_FULL_SPEED)
+
+#ifndef PICO_PIO_USB_PIN_DP
+#define PICO_PIO_USB_PIN_DP 12
+#endif
 
 #endif
