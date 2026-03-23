@@ -36,7 +36,7 @@ typedef enum {
 
 static sync_mode_t current_mode = MODE_SYNC;
 static bool last_toggle_state = false;
-static xbox_report_t host_report;      // 从真实手柄读取的原始数据
+static hid_report_t host_report;      // 从真实手柄读取的原始数据
 static bool host_connected = false;
 
 // 反作弊配置
@@ -44,7 +44,7 @@ static bool host_connected = false;
 typedef struct {
     uint32_t last_update_ms;
     uint32_t delay_ms;
-    xbox_report_t delayed_report;
+    hid_report_t delayed_report;
 } anti_detect_t;
 
 static anti_detect_t ad_ctrl = {0, 1, {0}};
@@ -79,7 +79,7 @@ static inline void put_off(void) {
 
 void init_ws2812(void) {
     uint offset = pio_add_program(pio0, &ws2812_program);
-    ws2812_program_init(pio0, 0, offset, WS2812_PIN, WS2812_FREQ, false);  // 尝试使用RGB格式，可能LED硬件不支持RGBW
+    ws2812_program_init(pio0, 0, offset, WS2812_PIN, WS2812_FREQ, false);  // 使用RGB格式
     printf("WS2812 initialized on GPIO %d (RGB format)\r\n", WS2812_PIN);
 }
 
@@ -133,13 +133,13 @@ static int16_t calculate_offset(int16_t base_range, uint8_t strength) {
     return (int16_t)((get_rand_32() % (scaled_range * 2 + 1)) - scaled_range);
 }
 
-static int16_t apply_stick_offset(int16_t value, uint8_t strength) {
+static int8_t apply_stick_offset(int8_t value, uint8_t strength) {
     if (value == 0) return 0;
     
-    // 摇杆偏移量：基准范围为±4，根据强度调整
-    int16_t offset = calculate_offset(4, strength);
+    // 摇杆偏移量：基准范围为±2，根据强度调整
+    int16_t offset = calculate_offset(2, strength);
     int32_t new_val = (int32_t)value + offset;
-    return (int16_t)(new_val > 32767 ? 32767 : (new_val < -32768 ? -32768 : new_val));
+    return (int8_t)(new_val > 127 ? 127 : (new_val < -128 ? -128 : new_val));
 }
 
 static uint8_t apply_trigger_offset(uint8_t value, uint8_t strength) {
@@ -154,7 +154,7 @@ static uint8_t apply_trigger_offset(uint8_t value, uint8_t strength) {
 // 检查模式切换按钮组合
 static bool check_mode_toggle(void) {
     static uint32_t last_toggle_time = 0;
-    bool current_toggle = (host_report.buttons & (XBOX_BTN_BACK | XBOX_BTN_START)) == (XBOX_BTN_BACK | XBOX_BTN_START);
+    bool current_toggle = (host_report.buttons & (BTN_BACK | BTN_START)) == (BTN_BACK | BTN_START);
     uint32_t now = to_ms_since_boot(get_absolute_time());
     
     // 防长按重复触发：必须释放后再次按下
@@ -187,42 +187,21 @@ void process_and_send_reports(void) {
         
         uint8_t strength = ANTI_CHEAT_STRENGTH;
         
-        ad_ctrl.delayed_report.left_stick_x = apply_stick_offset(host_report.left_stick_x, strength);
-        ad_ctrl.delayed_report.left_stick_y = apply_stick_offset(host_report.left_stick_y, strength);
-        ad_ctrl.delayed_report.right_stick_x = apply_stick_offset(host_report.right_stick_x, strength);
-        ad_ctrl.delayed_report.right_stick_y = apply_stick_offset(host_report.right_stick_y, strength);
+        ad_ctrl.delayed_report.left_x = apply_stick_offset(host_report.left_x, strength);
+        ad_ctrl.delayed_report.left_y = apply_stick_offset(host_report.left_y, strength);
+        ad_ctrl.delayed_report.right_x = apply_stick_offset(host_report.right_x, strength);
+        ad_ctrl.delayed_report.right_y = apply_stick_offset(host_report.right_y, strength);
         ad_ctrl.delayed_report.left_trigger = apply_trigger_offset(host_report.left_trigger, strength);
         ad_ctrl.delayed_report.right_trigger = apply_trigger_offset(host_report.right_trigger, strength);
         
-        // 确保报告ID和大小正确
-        ad_ctrl.delayed_report.report_id = XINPUT_REPORT_ID;
-        ad_ctrl.delayed_report.report_size = 0x14;  // 20字节，Xbox 360标准报告大小
+        // 确保报告ID正确
+        ad_ctrl.delayed_report.report_id = 0x01;
         
         ad_ctrl.delay_ms = (get_rand_32() % 6) + 1;
         ad_ctrl.last_update_ms = now;
         if (tud_ready()) {
-            // 使用标准HID类函数发送控制器报告
-            // 创建标准HID游戏手柄报告格式
-            uint8_t hid_report[20] = {0};
-            hid_report[0] = 0x01; // Report ID
-            
-            // 复制按钮状态（16个按钮）
-            hid_report[1] = (ad_ctrl.delayed_report.buttons & 0xFF);
-            hid_report[2] = (ad_ctrl.delayed_report.buttons >> 8) & 0xFF;
-            
-            // Hat switch (我们不支持，设置为中心位置)
-            hid_report[3] = 0x08; // Hat switch: 中心位置
-            
-            // Axes (将Xbox 360的16位摇杆值转换为8位HID值)
-            hid_report[4] = (uint8_t)(ad_ctrl.delayed_report.left_stick_x >> 8);
-            hid_report[5] = (uint8_t)(ad_ctrl.delayed_report.left_stick_y >> 8);
-            hid_report[6] = (uint8_t)(ad_ctrl.delayed_report.right_stick_x >> 8);
-            hid_report[7] = (uint8_t)(ad_ctrl.delayed_report.right_stick_y >> 8);
-            hid_report[8] = ad_ctrl.delayed_report.left_trigger;
-            hid_report[9] = ad_ctrl.delayed_report.right_trigger;
-            
-            // 发送HID报告
-            tud_hid_report(0x01, hid_report, sizeof(hid_report));
+            // 直接发送标准HID报告
+            tud_hid_report(0x01, &ad_ctrl.delayed_report, sizeof(hid_report_t));
         }
     }
 }
@@ -278,15 +257,15 @@ void tuh_mount_cb(uint8_t dev_addr) {
 void tuh_umount_cb(uint8_t dev_addr) {
     DEBUG_printf("TinyUSB: Host device unmounted (addr=%d)\r\n", dev_addr);
     host_connected = false;
-    memset(&host_report, 0, sizeof(xbox_report_t));
+    memset(&host_report, 0, sizeof(hid_report_t));
 }
 
 // HID 报告接收回调
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
     (void)dev_addr;
     (void)instance;
-    if (len >= sizeof(xbox_report_t)) {
-        memcpy(&host_report, report, sizeof(xbox_report_t));
+    if (len >= sizeof(hid_report_t)) {
+        memcpy(&host_report, report, sizeof(hid_report_t));
         process_and_send_reports();
     }
 }
@@ -300,7 +279,7 @@ int main(void) {
 
     stdio_init_all();
     DEBUG_printf("\r\n=== POE2GamePad Starting ===\r\n");
-    DEBUG_printf("RP2350 PIO-USB Xbox 360 Controller Sync\r\n");
+    DEBUG_printf("RP2350 PIO-USB Gamepad Sync\r\n");
     DEBUG_printf("System clock: %ld Hz\r\n", clock_get_hz(clk_sys));
 
     // 初始化 GPIO18 控制 5V 供电（开启）
