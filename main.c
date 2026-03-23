@@ -33,7 +33,7 @@ int main(void) {
     init_ws2812();
     put_rgb(0, 0, 100);
     
-    printf("\r\nPOE2 v7 - CDC Test\r\n");
+    printf("\r\nPOE2 v8 - CDC Test\r\n");
     
     tusb_init();
     
@@ -41,20 +41,18 @@ int main(void) {
     while (1) {
         tud_task();
         
-        if (tud_cdc_connected()) {
-            printf("CDC connected\r\n");
-            for (int i = 0; i < 10; i++) {
-                tud_cdc_write_str("Hello!\r\n");
-                tud_cdc_write_flush();
-                sleep_ms(100);
-            }
-            while(1) { tud_task(); sleep_ms(1000); }
-        }
-        
         if (to_ms_since_boot(get_absolute_time()) - tick > 500) {
             put_rgb(0, (tick++ & 1) ? 100 : 0, 0);
             tick = to_ms_since_boot(get_absolute_time());
         }
         sleep_ms(10);
     }
+}
+
+void tud_mount_cb(void) {
+    printf("Device mounted\r\n");
+}
+
+void tud_umount_cb(void) {
+    printf("Device unmounted\r\n");
 }
