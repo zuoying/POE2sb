@@ -3,24 +3,21 @@
 
 #include "tusb.h"
 
-// 标准游戏手柄的VID/PID
-#define GAMEPAD_VID 0x04D8  // Microchip Technology Inc.
-#define GAMEPAD_PID 0x003F  // 标准游戏手柄
+#define GAMEPAD_VID 0x1234  // Generic VID for testing
+#define GAMEPAD_PID 0x5678  // Generic PID for testing
 
-// 标准HID游戏手柄报告结构
 typedef struct {
-    uint8_t report_id;   // 报告ID
-    uint16_t buttons;    // 按键位掩码
-    uint8_t hat;         // 方向键
-    int8_t left_x;       // 左摇杆X轴
-    int8_t left_y;       // 左摇杆Y轴
-    int8_t right_x;      // 右摇杆X轴
-    int8_t right_y;      // 右摇杆Y轴
+    uint8_t report_id;
+    uint16_t buttons;
+    uint8_t hat;
+    int8_t left_x;
+    int8_t left_y;
+    int8_t right_x;
+    int8_t right_y;
     uint8_t left_trigger;
     uint8_t right_trigger;
 } __attribute__((packed)) hid_report_t;
 
-// 按键位掩码定义 (标准游戏手柄)
 #define BTN_UP     0x0001
 #define BTN_DOWN   0x0002
 #define BTN_LEFT   0x0004
