@@ -4,9 +4,9 @@ tusb_desc_device_t const desc_device = {
     .bLength = sizeof(tusb_desc_device_t),
     .bDescriptorType = TUSB_DESC_DEVICE,
     .bcdUSB = 0x0200,
-    .bDeviceClass = 0x00,
-    .bDeviceSubClass = 0x00,
-    .bDeviceProtocol = 0x00,
+    .bDeviceClass = 0xEF,
+    .bDeviceSubClass = 0x02,
+    .bDeviceProtocol = 0x01,
     .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
     .idVendor = GAMEPAD_VID,
     .idProduct = GAMEPAD_PID,
@@ -17,64 +17,12 @@ tusb_desc_device_t const desc_device = {
     .bNumConfigurations = 0x01
 };
 
-uint8_t const * tud_descriptor_device_cb(void) {
-    return (uint8_t const *) &desc_device;
-}
-
-uint8_t const hid_report_descriptor[] = {
-    0x05, 0x01,
-    0x09, 0x05,
-    0xA1, 0x01,
-    0x85, 0x01,
-
-    0x05, 0x09,
-    0x19, 0x01,
-    0x29, 0x10,
-    0x15, 0x00,
-    0x25, 0x01,
-    0x75, 0x01,
-    0x95, 0x10,
-    0x81, 0x02,
-
-    0x05, 0x01,
-    0x09, 0x39,
-    0x15, 0x00,
-    0x25, 0x07,
-    0x35, 0x00,
-    0x46, 0x3B, 0x01,
-    0x65, 0x14,
-    0x75, 0x04,
-    0x95, 0x01,
-    0x81, 0x42,
-
-    0x75, 0x04,
-    0x95, 0x01,
-    0x81, 0x03,
-
-    0x05, 0x01,
-    0x09, 0x30,
-    0x09, 0x31,
-    0x09, 0x32,
-    0x09, 0x33,
-    0x09, 0x34,
-    0x09, 0x35,
-    0x15, 0x81,
-    0x25, 0x7F,
-    0x75, 0x08,
-    0x95, 0x06,
-    0x81, 0x02,
-
-    0xC0
-};
-
-#define HID_REPORT_DESCRIPTOR_LEN sizeof(hid_report_descriptor)
-
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + 7)
+#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN)
 
 uint8_t const desc_configuration[] = {
     9, TUSB_DESC_CONFIGURATION,
     U16_TO_U8S_LE(CONFIG_TOTAL_LEN),
-    0x01,
+    0x02,
     0x01,
     0x00,
     0x80,
@@ -83,62 +31,53 @@ uint8_t const desc_configuration[] = {
     9, TUSB_DESC_INTERFACE,
     0x00,
     0x00,
+    0x02,
+    0x02,
+    0x02,
     0x01,
-    0x03,
     0x00,
-    0x00,
-    0x00,
-
-    9, 0x21,
-    0x11, 0x01,
-    0x00,
-    0x01,
-    0x22,
-    U16_TO_U8S_LE(HID_REPORT_DESCRIPTOR_LEN),
 
     7, TUSB_DESC_ENDPOINT,
     0x81,
     0x03,
-    U16_TO_U8S_LE(32),
-    0x0A,
+    U16_TO_U8S_LE(64),
+    0x10,
+
+    7, TUSB_DESC_ENDPOINT,
+    0x01,
+    0x02,
+    U16_TO_U8S_LE(64),
+    0x10,
 };
 
-uint8_t const * tud_descriptor_configuration_cb(uint8_t index) {
-    (void) index;
+uint8_t const desc_hid_report[] = {
+    TUD_HID_REPORT_DESC_GENERIC_INOUT(CFG_TUD_HID_EP_BUFSIZE)
+};
+
+tusb_desc_device_t const* tud_descriptor_device_cb(void) {
+    return &desc_device;
+}
+
+uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
+    (void)index;
     return desc_configuration;
 }
 
-uint8_t const * tud_hid_descriptor_report_cb(uint8_t itf) {
-    (void) itf;
-    return hid_report_descriptor;
+uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
+    (void)langid;
+    return NULL;
 }
 
-char const* string_desc_arr[] = {
-    (char const[]) { 0x04, 0x03, 0x09, 0x04 },
-    "POE2",
-    "Gamepad",
-    "0001",
-};
+uint8_t const* tud_hid_descriptor_report_cb(uint8_t itf) {
+    (void)itf;
+    return desc_hid_report;
+}
 
-static uint16_t _desc_str[32];
+uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
+    (void)itf;(void)report_id;(void)report_type;(void)buffer;(void)reqlen;
+    return 0;
+}
 
-uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
-    (void) langid;
-    uint8_t chr_count;
-
-    if (index == 0) {
-        memcpy(&_desc_str[1], string_desc_arr[0], 2);
-        chr_count = 1;
-    } else {
-        if (index >= sizeof(string_desc_arr) / sizeof(string_desc_arr[0])) return NULL;
-        const char* str = string_desc_arr[index];
-        chr_count = strlen(str);
-        if (chr_count > 31) chr_count = 31;
-        for (uint8_t i = 0; i < chr_count; i++) {
-            _desc_str[1 + i] = str[i];
-        }
-    }
-
-    _desc_str[0] = (TUSB_DESC_STRING << 8) | (2 * chr_count + 2);
-    return _desc_str;
+void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
+    (void)itf;(void)report_id;(void)report_type;(void)buffer;(void)bufsize;
 }
