@@ -35,7 +35,7 @@ int main(void) {
     set_sys_clock_khz(120000, true);
 
     stdio_init_all();
-    DEBUG_printf("\r\nPOE2GamePad v5 - Pure Device Test\r\n");
+    printf("\r\nPOE2GamePad v6 - CDC+HID Test\r\n");
 
     gpio_init(18);
     gpio_set_dir(18, GPIO_OUT);
@@ -44,16 +44,16 @@ int main(void) {
     init_ws2812();
     put_rgb(0, 0, 100);
 
-    DEBUG_printf("Init TinyUSB Device...\r\n");
+    printf("Init TinyUSB...\r\n");
     tusb_init();
-    DEBUG_printf("TinyUSB init done\r\n");
+    printf("TinyUSB init done\r\n");
 
     gpio_put(18, 1);
 
     uint32_t tick = 0;
     hid_report_t report = {0};
 
-    DEBUG_printf("Main loop\r\n");
+    printf("Main loop\r\n");
 
     while (1) {
         tud_task();
@@ -82,11 +82,11 @@ int main(void) {
 }
 
 void tud_mount_cb(void) {
-    DEBUG_printf("Device mounted\r\n");
+    printf("Device mounted\r\n");
 }
 
 void tud_umount_cb(void) {
-    DEBUG_printf("Device unmounted\r\n");
+    printf("Device unmounted\r\n");
 }
 
 void tud_hid_set_report_cb(uint8_t itf, uint8_t id, hid_report_type_t t, uint8_t const* b, uint16_t s) {(void)itf;(void)id;(void)t;(void)b;(void)s;}
