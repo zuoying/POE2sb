@@ -75,6 +75,7 @@ target_link_libraries(poe2gamepad
 
 # 配置 PIO-USB 引脚 (微雪 RP2350-USB-A 的 USB-A 口使用 GPIO 12/13)
 target_compile_definitions(poe2gamepad PRIVATE
+    PIO_USB_HOST_D_PLUS_PIN=12
     PIO_USB_HOST_D_MINUS_PIN=13
 )
 
