@@ -1,19 +1,19 @@
 #include "usb_descriptors.h"
 
 tusb_desc_device_t const desc_device = {
-    .bLength            = sizeof(tusb_desc_device_t),
-    .bDescriptorType    = TUSB_DESC_DEVICE,
-    .bcdUSB             = 0x0200,
-    .bDeviceClass       = 0x00,
-    .bDeviceSubClass    = 0x00,
-    .bDeviceProtocol    = 0x00,
-    .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
-    .idVendor           = GAMEPAD_VID,
-    .idProduct          = GAMEPAD_PID,
-    .bcdDevice          = 0x0100,
-    .iManufacturer      = 0x01,
-    .iProduct           = 0x02,
-    .iSerialNumber      = 0x03,
+    .bLength = sizeof(tusb_desc_device_t),
+    .bDescriptorType = TUSB_DESC_DEVICE,
+    .bcdUSB = 0x0200,
+    .bDeviceClass = 0x00,
+    .bDeviceSubClass = 0x00,
+    .bDeviceProtocol = 0x00,
+    .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
+    .idVendor = GAMEPAD_VID,
+    .idProduct = GAMEPAD_PID,
+    .bcdDevice = 0x0100,
+    .iManufacturer = 0x01,
+    .iProduct = 0x02,
+    .iSerialNumber = 0x03,
     .bNumConfigurations = 0x01
 };
 
@@ -100,7 +100,7 @@ uint8_t const desc_configuration[] = {
     0x81,
     0x03,
     U16_TO_U8S_LE(32),
-    0x01,
+    0x0A,
 };
 
 uint8_t const * tud_descriptor_configuration_cb(uint8_t index) {
@@ -115,9 +115,9 @@ uint8_t const * tud_hid_descriptor_report_cb(uint8_t itf) {
 
 char const* string_desc_arr[] = {
     (char const[]) { 0x04, 0x03, 0x09, 0x04 },
-    "Waveshare",
-    "Xbox 360 Controller Sync",
-    "1234567890",
+    "POE2",
+    "Gamepad",
+    "0001",
 };
 
 static uint16_t _desc_str[32];
