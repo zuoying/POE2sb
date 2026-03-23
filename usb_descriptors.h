@@ -3,66 +3,38 @@
 
 #include "tusb.h"
 
-// Xbox 360 控制器 PID/VID - 使用标准的Xbox 360控制器PID
-#define XBOX_VID 0x045E  // Microsoft Corporation
-#define XBOX_PID 0x028E  // Xbox 360 Controller for Windows (标准PID)
+// 标准游戏手柄的VID/PID
+#define GAMEPAD_VID 0x04D8  // Microchip Technology Inc.
+#define GAMEPAD_PID 0x003F  // 标准游戏手柄
 
-// XInput 协议版本
-#define XINPUT_VERSION 0x114  // XInput 1.4
-
-// XInput 接口类 (Vendor Specific)
-#define XINPUT_CLASS 0xFF
-#define XINPUT_SUBCLASS 0x5D
-#define XINPUT_PROTOCOL 0x01
-
-// 每个手柄的端点数量 (1 IN, 1 OUT)
-#define EPNUM_XBOX1_IN  0x81
-#define EPNUM_XBOX1_OUT 0x01
-#define EPNUM_XBOX2_IN  0x82
-#define EPNUM_XBOX2_OUT 0x02
-
-// 每个手柄的报告大小
-#define XBOX_REPORT_SIZE 20
-
-// XInput 设备请求类型
-#define XINPUT_SET_REPORT 0x21
-#define XINPUT_GET_REPORT 0xA1
-#define XINPUT_REPORT_TYPE_INPUT 0x00
-#define XINPUT_REPORT_TYPE_OUTPUT 0x01
-#define XINPUT_REPORT_TYPE_FEATURE 0x02
-
-// 手柄输入报告结构体 (Xbox 360 XInput)
+// 标准HID游戏手柄报告结构
 typedef struct {
-    uint8_t report_id;   // 总是 0x00
-    uint8_t report_size; // 总是 0x14 (20 字节)
-    uint16_t buttons;   // 按键位掩码
+    uint8_t report_id;   // 报告ID
+    uint16_t buttons;    // 按键位掩码
+    uint8_t hat;         // 方向键
+    int8_t left_x;       // 左摇杆X轴
+    int8_t left_y;       // 左摇杆Y轴
+    int8_t right_x;      // 右摇杆X轴
+    int8_t right_y;      // 右摇杆Y轴
     uint8_t left_trigger;
     uint8_t right_trigger;
-    int16_t left_stick_x;
-    int16_t left_stick_y;
-    int16_t right_stick_x;
-    int16_t right_stick_y;
-    uint8_t reserved[6];
-} __attribute__((packed)) xbox_report_t;
+} __attribute__((packed)) hid_report_t;
 
-// 验证报告大小是否正确
-static_assert(sizeof(xbox_report_t) == 20, "Xbox report size must be 20 bytes");
-
-// 按键位掩码定义 (微软 Xbox 360)
-#define XBOX_BTN_UP     0x0001
-#define XBOX_BTN_DOWN   0x0002
-#define XBOX_BTN_LEFT   0x0004
-#define XBOX_BTN_RIGHT  0x0008
-#define XBOX_BTN_START  0x0010  // Menu
-#define XBOX_BTN_BACK   0x0020  // View
-#define XBOX_BTN_L3     0x0040
-#define XBOX_BTN_R3     0x0080
-#define XBOX_BTN_LB     0x0100
-#define XBOX_BTN_RB     0x0200
-#define XBOX_BTN_GUIDE  0x0400
-#define XBOX_BTN_A      0x1000
-#define XBOX_BTN_B      0x2000
-#define XBOX_BTN_X      0x4000
-#define XBOX_BTN_Y      0x8000
+// 按键位掩码定义 (标准游戏手柄)
+#define BTN_UP     0x0001
+#define BTN_DOWN   0x0002
+#define BTN_LEFT   0x0004
+#define BTN_RIGHT  0x0008
+#define BTN_START  0x0010
+#define BTN_BACK   0x0020
+#define BTN_L3     0x0040
+#define BTN_R3     0x0080
+#define BTN_LB     0x0100
+#define BTN_RB     0x0200
+#define BTN_GUIDE  0x0400
+#define BTN_A      0x1000
+#define BTN_B      0x2000
+#define BTN_X      0x4000
+#define BTN_Y      0x8000
 
 #endif
