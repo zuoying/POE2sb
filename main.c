@@ -163,10 +163,11 @@ void process_and_send_reports(void) {
 void core1_main(void) {
     DEBUG_printf("Core1: Initializing USB Host...\r\n");
 
-    sleep_ms(100);
+    sleep_ms(200);
 
     pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
     pio_cfg.pin_dp = PICO_PIO_USB_PIN_DP;
+    DEBUG_printf("Core1: PIO USB DP pin = %d\r\n", pio_cfg.pin_dp);
 
     tuh_configure(1, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
     tuh_init(1);
@@ -189,9 +190,13 @@ void tud_umount_cb(void) {
 }
 
 void tuh_mount_cb(uint8_t dev_addr) {
+    uint8_t itf = 0;
     DEBUG_printf("TinyUSB: Host device mounted (addr=%d)\r\n", dev_addr);
     host_connected = true;
-    tuh_hid_receive_report(dev_addr, 0);
+
+    if (tuh_hid_receive_report(dev_addr, itf) == false) {
+        DEBUG_printf("Core1: Error requesting report\r\n");
+    }
 }
 
 void tuh_umount_cb(uint8_t dev_addr) {
@@ -201,15 +206,15 @@ void tuh_umount_cb(uint8_t dev_addr) {
 }
 
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
-    (void)dev_addr;
-    (void)instance;
+    DEBUG_printf("Core1: HID report received (dev=%d, itf=%d, len=%d)\r\n", dev_addr, instance, len);
 
-    if (len >= 8) {
+    if (len >= sizeof(hid_report_t)) {
         memcpy(&host_report, report, sizeof(hid_report_t));
+        DEBUG_printf("Core1: Report copied, buttons=0x%04X\r\n", host_report.buttons);
     }
 
     if (tuh_hid_receive_report(dev_addr, instance) == false) {
-        DEBUG_printf("Error: cannot request report\r\n");
+        DEBUG_printf("Core1: Error requesting report\r\n");
     }
 }
 
@@ -230,22 +235,24 @@ int main(void) {
 
     current_mode = MODE_SYNC;
     update_led_indicator();
+    DEBUG_printf("Initial LED: SYNC mode (green)\r\n");
 
-    DEBUG_printf("Initializing TinyUSB Device...\r\n");
+    DEBUG_printf("Core0: Initializing TinyUSB Device...\r\n");
     tusb_init();
-    DEBUG_printf("TinyUSB Device initialized\r\n");
+    DEBUG_printf("Core0: TinyUSB Device initialized\r\n");
 
     gpio_put(GPIO_5V_EN, 1);
+    DEBUG_printf("Core0: 5V power enabled\r\n");
     sleep_ms(500);
 
-    DEBUG_printf("Starting Core1...\r\n");
+    DEBUG_printf("Core0: Starting Core1...\r\n");
     multicore_launch_core1(core1_main);
 
     while (!core1_ready) {
         tight_loop_contents();
     }
 
-    DEBUG_printf("Core0: Entering main loop...\r\n");
+    DEBUG_printf("Core0: Entering main loop\r\n");
 
     while (1) {
         tud_task();
@@ -276,7 +283,6 @@ uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t
     (void)itf;
     (void)report_id;
     (void)type;
-    (void)buffer;
     memset(buffer, 0, reqlen);
     return reqlen;
 }
