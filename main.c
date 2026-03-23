@@ -223,7 +223,7 @@ int main(void) {
     const uint32_t GPIO_5V_EN = 18;
     gpio_init(GPIO_5V_EN);
     gpio_set_dir(GPIO_5V_EN, GPIO_OUT);
-    gpio_set_drive_strength(GPIO_5V_EN, GPIO_DRIVE_STRENGTH_16MA);
+    gpio_set_drive_strength(GPIO_5V_EN, GPIO_DRIVE_STRENGTH_12MA);
     gpio_put(GPIO_5V_EN, 0);
 
     init_ws2812();
