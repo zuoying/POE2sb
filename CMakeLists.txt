@@ -44,7 +44,6 @@ target_include_directories(poe2gamepad PRIVATE
 
 target_link_libraries(poe2gamepad
     pico_stdlib
-    pico_rand
     tinyusb_device
     tinyusb_host
     pico_pio_usb
