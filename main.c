@@ -233,16 +233,28 @@ void process_and_send_reports(void) {
 void core1_main() {
     // 初始化 USB Host
     DEBUG_printf("Core1: Initializing USB Host...\r\n");
+    
+    // 配置 PIO-USB
     pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
+    // 设置为高电流模式（Xbox 360手柄需要较高电流）
+    pio_cfg.usb_port_speed = PIO_USB_FULL_SPEED;
+    pio_cfg.pin_dp = 12;
+    pio_cfg.pin_dm = 13;
+    
+    // 配置并初始化 USB Host
     tuh_configure(1, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
     tuh_init(1);
     
     core1_ready = true;
-    DEBUG_printf("Core1: USB Host initialized\r\n");
+    DEBUG_printf("Core1: USB Host initialized with PIO-USB on GPIO%d (D+) and GPIO%d (D-)\r\n", pio_cfg.pin_dp, pio_cfg.pin_dm);
     
     // Core1 主循环：仅处理 USB Host 任务
     while (1) {
         tuh_task();
+        // 定期检查并保持5V供电
+        const uint32_t GPIO_5V_EN = 18;
+        gpio_put(GPIO_5V_EN, 1);
+        sleep_ms(500);  // 每500ms检查一次
     }
 }
 
