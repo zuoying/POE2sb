@@ -3,30 +3,12 @@
 #include "pico/stdlib.h"
 #include "tusb.h"
 
-#define REPORT_ID 1
-
-typedef struct {
-    uint8_t report_id;
-    int16_t x; int16_t y;
-    uint8_t buttons;
-} hid_report_t;
-
-static hid_report_t report = { .report_id = REPORT_ID };
-
 int main(void) {
     stdio_init_all();
     tusb_init();
     
     while (1) {
         tud_task();
-        
-        if (tud_ready()) {
-            report.x = 0;
-            report.y = 0;
-            report.buttons = 0;
-            tud_hid_report(REPORT_ID, &report, sizeof(report));
-        }
-        
         sleep_ms(10);
     }
 }
