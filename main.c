@@ -307,8 +307,10 @@ int main(void) {
     const uint32_t GPIO_5V_EN = 18;
     gpio_init(GPIO_5V_EN);
     gpio_set_dir(GPIO_5V_EN, GPIO_OUT);
+    // 设置为强驱动能力
+    gpio_set_drive_strength(GPIO_5V_EN, GPIO_DRIVE_STRENGTH_12MA);
     gpio_put(GPIO_5V_EN, 1);  // 开启5V供电
-    DEBUG_printf("GPIO18: 5V power enabled\r\n");
+    DEBUG_printf("GPIO18: 5V power enabled (12mA drive strength)\r\n");
 
     // 初始化 WS2812 RGB 灯
     init_ws2812();
