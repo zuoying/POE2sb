@@ -234,19 +234,17 @@ void core1_main() {
     // 初始化 USB Host
     DEBUG_printf("Core1: Initializing USB Host...\r\n");
     
-    // 配置 PIO-USB
+    // 使用默认的 PIO-USB 配置
     pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
-    // 设置为高电流模式（Xbox 360手柄需要较高电流）
-    pio_cfg.usb_port_speed = PIO_USB_FULL_SPEED;
+    // 仅设置D+引脚，D-引脚通过CMake宏定义设置
     pio_cfg.pin_dp = 12;
-    pio_cfg.pin_dm = 13;
     
     // 配置并初始化 USB Host
     tuh_configure(1, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
     tuh_init(1);
     
     core1_ready = true;
-    DEBUG_printf("Core1: USB Host initialized with PIO-USB on GPIO%d (D+) and GPIO%d (D-)\r\n", pio_cfg.pin_dp, pio_cfg.pin_dm);
+    DEBUG_printf("Core1: USB Host initialized with PIO-USB on GPIO%d (D+)\r\n", pio_cfg.pin_dp);
     
     // Core1 主循环：仅处理 USB Host 任务
     while (1) {
