@@ -1,13 +1,20 @@
 cmake_minimum_required(VERSION 3.13)
 
-# 强制指定 RP2350 平台
+# 必须在 include(pico_sdk_import.cmake) 之前设置平台！
 set(PICO_PLATFORM rp2350 CACHE STRING "Platform")
 set(PICO_BOARD pico2 CACHE STRING "Board")
 
-# 强制设置 TinyUSB 使用 PIO-USB 作为主机驱动 (HCD)
+# 设置 TinyUSB 使用 PIO-USB 作为主机驱动
 set(TINYUSB_HOST_HCD "pico_pio_usb" CACHE STRING "TinyUSB Host HCD")
 
-# 包含 Pico SDK 导入脚本
+# 必须在 pico_sdk_import.cmake 之前设置 PICO_PIO_USB_PATH
+if (DEFINED ENV{PICO_PIO_USB_PATH})
+    set(PICO_PIO_USB_PATH $ENV{PICO_PIO_USB_PATH})
+else()
+    set(PICO_PIO_USB_PATH ${PROJECT_SOURCE_DIR}/pico-pio-usb)
+endif()
+
+# 包含 Pico SDK 导入脚本 (必须在 platform 设置之后)
 include(pico_sdk_import.cmake)
 
 project(poe2gamepad C CXX ASM)
@@ -17,27 +24,15 @@ set(CMAKE_CXX_STANDARD 17)
 # 初始化 Pico SDK
 pico_sdk_init()
 
-# 增加全局定义，确保所有库都能识别 RP2350
+# 确保识别 RP2350
 add_compile_definitions(PICO_RP2350=1)
 
-# 强制指定 RP2350 平台
-# (已经作为缓存变量在 include 之前设置)
-
-# 优先从环境变量读取 PICO_PIO_USB_PATH，否则使用本地默认路径
-if (NOT PICO_PIO_USB_PATH)
-    if (DEFINED ENV{PICO_PIO_USB_PATH})
-        set(PICO_PIO_USB_PATH $ENV{PICO_PIO_USB_PATH})
-    else()
-        set(PICO_PIO_USB_PATH ${PROJECT_SOURCE_DIR}/pico-pio-usb)
-    endif()
-endif()
-
-# 确保包含 pico-pio-usb
+# 添加 pico-pio-usb 子模块
 if (EXISTS ${PICO_PIO_USB_PATH}/CMakeLists.txt)
     add_subdirectory(${PICO_PIO_USB_PATH} pico_pio_usb)
 endif()
 
-# 显式添加 hcd_pio_usb.c 源文件以解决云端编译环境链接问题
+# 查找 hcd_pio_usb.c 源文件
 if (EXISTS ${PICO_PIO_USB_PATH}/src/hcd_pio_usb.c)
     set(HCD_PIO_USB_SRC ${PICO_PIO_USB_PATH}/src/hcd_pio_usb.c)
 elseif (EXISTS ${PICO_SDK_PATH}/lib/tinyusb/src/portable/raspberrypi/pio_usb/hcd_pio_usb.c)
@@ -50,10 +45,8 @@ add_executable(poe2gamepad
     ${HCD_PIO_USB_SRC}
 )
 
-
-
 # 包含头文件
-include_directories(
+target_include_directories(poe2gamepad PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
     ${PICO_PIO_USB_PATH}/src
 )
@@ -70,16 +63,13 @@ target_link_libraries(poe2gamepad
     hardware_dma
 )
 
-# 启用 TinyUSB 设备模式和主机模式
-# (PICO_RP2350=1 已经通过 add_compile_definitions 全局设置)
-
-# 配置 PIO-USB 引脚 (微雪 RP2350-USB-A 的 USB-A 口使用 GPIO 12/13)
+# PIO-USB 引脚配置
 target_compile_definitions(poe2gamepad PRIVATE
     PIO_USB_HOST_D_PLUS_PIN=12
     PIO_USB_HOST_D_MINUS_PIN=13
 )
 
-# 启用 USB 输出
+# 启用 UART 输出（禁用 USB CDC）
 pico_enable_stdio_usb(poe2gamepad 0)
 pico_enable_stdio_uart(poe2gamepad 1)
 
