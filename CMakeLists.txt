@@ -15,7 +15,6 @@ add_compile_definitions(PICO_RP2350=1)
 
 add_executable(poe2gamepad
     main.c
-    usb_descriptors.c
 )
 
 target_include_directories(poe2gamepad PRIVATE
@@ -25,7 +24,6 @@ target_include_directories(poe2gamepad PRIVATE
 target_link_libraries(poe2gamepad
     pico_stdlib
     tinyusb_device
-    hardware_pio
 )
 
 pico_enable_stdio_usb(poe2gamepad 0)
