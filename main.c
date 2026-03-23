@@ -2,19 +2,75 @@
 #include <string.h>
 #include "pico/stdlib.h"
 #include "tusb.h"
+#include "hardware/clocks.h"
+
+#define LED_PIN 16
+#define POWER_PIN 18
+
+void init_hardware(void) {
+    gpio_init(LED_PIN);
+    gpio_set_dir(LED_PIN, GPIO_OUT);
+    gpio_put(LED_PIN, 1);
+    
+    gpio_init(POWER_PIN);
+    gpio_set_dir(POWER_PIN, GPIO_OUT);
+    gpio_put(POWER_PIN, 1);
+    sleep_ms(100);
+}
+
+void led_blink(int times, int delay_ms) {
+    for (int i = 0; i < times; i++) {
+        gpio_put(LED_PIN, 0);
+        sleep_ms(delay_ms);
+        gpio_put(LED_PIN, 1);
+        sleep_ms(delay_ms);
+    }
+}
 
 int main(void) {
     stdio_init_all();
+    
+    init_hardware();
+    led_blink(3, 200);
+    
+    printf("\nRP2350 USB Test\n");
+    printf("Setting up clocks...\n");
+    
+    set_sys_clock_khz(120000, true);
+    led_blink(1, 100);
+    
+    printf("Initializing USB...\n");
+    
     tusb_init();
+    led_blink(2, 100);
+    
+    printf("USB init done\n");
+    
+    uint32_t last_led = 0;
+    bool led_state = false;
     
     while (1) {
         tud_task();
+        
+        if (to_ms_since_boot(get_absolute_time()) - last_led > 500) {
+            led_state = !led_state;
+            gpio_put(LED_PIN, led_state);
+            last_led = to_ms_since_boot(get_absolute_time());
+        }
+        
         sleep_ms(10);
     }
 }
 
-void tud_mount_cb(void) {} 
-void tud_umount_cb(void) {}
+void tud_mount_cb(void) {
+    printf("Device mounted\n");
+    led_blink(1, 100);
+}
+
+void tud_umount_cb(void) {
+    printf("Device unmounted\n");
+    led_blink(2, 100);
+}
 
 uint8_t const* tud_descriptor_device_cb(void) {
     static uint8_t desc_device[] = {
@@ -51,8 +107,8 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     (void)langid;
     static uint16_t desc_str[] = {
         4, 3, 9, 4,
-        10, 3, 'A','d','a','f','r','u','i','t',
-        14, 3, 'G','a','m','e','p','a','d',
+        10, 3, 'R','P','2','3','5','0','-','T','e','s','t',
+        12, 3, 'U','S','B',' ','T','e','s','t',
         8, 3, '0','0','0','1'
     };
     uint16_t* p = desc_str;
