@@ -13,16 +13,6 @@
 #define CFG_TUD_CDC_RX_BUFSIZE    256
 #define CFG_TUD_CDC_TX_BUFSIZE    256
 
-#define CFG_TUH_ENABLED           1
-#define CFG_TUH_RPI_PIO_USB       1
-#define CFG_TUH_HID              1
-#define CFG_TUH_DEVICE_MAX        1
-#define CFG_TUH_ENUMERATION_BUFSIZE 256
-#define CFG_TUH_HID_EPIN_BUFSIZE  64
-#define CFG_TUH_HID_EPOUT_BUFSIZE 64
-
-#ifndef PICO_PIO_USB_PIN_DP
-#define PICO_PIO_USB_PIN_DP 12
-#endif
+#define CFG_TUH_ENABLED           0
 
 #endif
