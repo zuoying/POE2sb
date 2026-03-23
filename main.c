@@ -213,9 +213,12 @@ void core1_main() {
     // 初始化 USB Host
     DEBUG_printf("Core1: Initializing USB Host...\r\n");
     
+    // 增加较长的延迟，确保系统和电源完全稳定
+    sleep_ms(2000);
+    
     // 使用默认的 PIO-USB 配置
     pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
-    // 仅设置D+引脚，D-引脚通过CMake宏定义设置
+    // 仅设置D+引脚
     pio_cfg.pin_dp = 12;
     
     // 配置并初始化 USB Host
@@ -228,10 +231,10 @@ void core1_main() {
     // Core1 主循环：仅处理 USB Host 任务
     while (1) {
         tuh_task();
-        // 定期检查并保持5V供电
+        // 高频检查并保持5V供电（每100ms）
         const uint32_t GPIO_5V_EN = 18;
         gpio_put(GPIO_5V_EN, 1);
-        sleep_ms(500);  // 每500ms检查一次
+        sleep_ms(100);
     }
 }
 
@@ -282,14 +285,14 @@ int main(void) {
     DEBUG_printf("RP2350 PIO-USB Gamepad Sync\r\n");
     DEBUG_printf("System clock: %ld Hz\r\n", clock_get_hz(clk_sys));
 
-    // 初始化 GPIO18 控制 5V 供电（开启）
+    // 首先初始化5V供电引脚，但暂时不开启
     const uint32_t GPIO_5V_EN = 18;
     gpio_init(GPIO_5V_EN);
     gpio_set_dir(GPIO_5V_EN, GPIO_OUT);
-    // 设置为强驱动能力
-    gpio_set_drive_strength(GPIO_5V_EN, GPIO_DRIVE_STRENGTH_12MA);
-    gpio_put(GPIO_5V_EN, 1);  // 开启5V供电
-    DEBUG_printf("GPIO18: 5V power enabled (12mA drive strength)\r\n");
+    // 设置为最强驱动能力
+    gpio_set_drive_strength(GPIO_5V_EN, GPIO_DRIVE_STRENGTH_16MA);
+    gpio_put(GPIO_5V_EN, 0);  // 暂时关闭5V供电
+    DEBUG_printf("GPIO18: 5V power pin initialized (16mA drive strength)\r\n");
 
     // 初始化 WS2812 RGB 灯
     init_ws2812();
@@ -306,6 +309,12 @@ int main(void) {
     tusb_init();
     DEBUG_printf("Core0: USB Device initialized\r\n");
 
+    // 系统初始化完成，现在开启5V供电
+    const uint32_t GPIO_5V_EN = 18;
+    DEBUG_printf("Core0: Enabling 5V power for gamepad...\r\n");
+    gpio_put(GPIO_5V_EN, 1);  // 开启5V供电
+    sleep_ms(500);  // 等待供电稳定
+    
     // 启动 Core1 任务（处理 USB Host 和手柄读取）
     DEBUG_printf("Core0: Starting Core1 task...\r\n");
     multicore_launch_core1(core1_main);
