@@ -1,38 +1,44 @@
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
-#include "hardware/clocks.h"
 #include "tusb.h"
 
+#define REPORT_ID 1
+
+typedef struct {
+    uint8_t report_id;
+    int16_t x; int16_t y;
+    uint8_t buttons;
+} hid_report_t;
+
+static hid_report_t report = { .report_id = REPORT_ID };
+
 int main(void) {
-    set_sys_clock_khz(120000, true);
     stdio_init_all();
-    
-    printf("\nRP2350 USB Device Test\n");
-    
     tusb_init();
     
     while (1) {
         tud_task();
+        
+        if (tud_ready()) {
+            report.x = 0;
+            report.y = 0;
+            report.buttons = 0;
+            tud_hid_report(REPORT_ID, &report, sizeof(report));
+        }
+        
         sleep_ms(10);
     }
 }
 
-void tud_mount_cb(void) {
-    printf("Device mounted\n");
-}
-
-void tud_umount_cb(void) {
-    printf("Device unmounted\n");
-}
+void tud_mount_cb(void) {} 
+void tud_umount_cb(void) {}
 
 uint8_t const* tud_descriptor_device_cb(void) {
     static uint8_t desc_device[] = {
         18, TUSB_DESC_DEVICE,
         0x00, 0x02,
-        0x00,
-        0x00,
-        0x00,
+        0x00, 0x00, 0x00,
         64,
         0x12, 0x34,
         0x56, 0x78,
@@ -47,7 +53,7 @@ uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
     (void)index;
     static uint8_t desc_config[] = {
         9, TUSB_DESC_CONFIGURATION,
-        32, 0,
+        34, 0,
         1, 0, 0, 0x80, 0x32,
         9, TUSB_DESC_INTERFACE,
         0, 0, 1, 3, 0, 0, 0,
@@ -63,8 +69,8 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     (void)langid;
     static uint16_t desc_str[] = {
         4, 3, 9, 4,
-        10, 3, 'T','e','s','t',' ','D','e','v','i','c','e',
-        10, 3, 'G','a','m','e','p','a','d',
+        10, 3, 'A','d','a','f','r','u','i','t',
+        14, 3, 'G','a','m','e','p','a','d',
         8, 3, '0','0','0','1'
     };
     uint16_t* p = desc_str;
@@ -78,19 +84,16 @@ uint8_t const* tud_hid_descriptor_report_cb(uint8_t itf) {
     (void)itf;
     static uint8_t desc_hid_report[] = {
         0x05, 0x01,
-        0x09, 0x05,
+        0x09, 0x04,
         0xA1, 0x01,
+        0x85, 0x01,
         0x05, 0x01,
         0x09, 0x30,
         0x09, 0x31,
-        0x09, 0x32,
-        0x09, 0x33,
-        0x09, 0x34,
-        0x09, 0x35,
         0x15, 0x81,
         0x25, 0x7F,
-        0x75, 0x08,
-        0x95, 0x06,
+        0x75, 0x10,
+        0x95, 0x02,
         0x81, 0x02,
         0x05, 0x09,
         0x19, 0x01,
