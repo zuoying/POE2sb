@@ -41,10 +41,13 @@ add_compile_definitions(
 add_executable(poe2gamepad
     main.c
     ws2812.pio.h
+    class/xinput/xinput_host.c
+    class/xinput/xinput_device.c
 )
 
 target_include_directories(poe2gamepad PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/class/xinput
 )
 
 # 如果有PICO_PIO_USB_PATH，添加包含路径
