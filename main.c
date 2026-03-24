@@ -128,7 +128,9 @@ void tuh_umount_cb(uint8_t dev_addr) {
     led_blink(2, 100);
 }
 
-// HID报告接收回调
+// HID报告接收回调 - 已在xinput_host.c中定义
+// 注释掉以避免重复定义错误
+/*
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, 
                               uint8_t const* report, uint16_t len) {
     (void) dev_addr;
@@ -138,6 +140,7 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance,
     // 简单的报告处理示例
     printf("Received HID report, length: %d\n", len);
 }
+*/
 
 // Core1: USB主机任务
 void core1_main() {
@@ -427,7 +430,9 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     return desc_str;
 }
 
-// HID设置报告回调
+// HID设置报告回调 - 已在xinput_device.c中定义
+// 注释掉以避免重复定义错误
+/*
 void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, 
                           uint8_t const* buffer, uint16_t bufsize) {
     (void) itf;
@@ -436,8 +441,11 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
     (void) buffer;
     (void) bufsize;
 }
+*/
 
-// HID获取报告回调
+// HID获取报告回调 - 已在xinput_device.c中定义
+// 注释掉以避免重复定义错误
+/*
 uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, 
                               uint8_t* buffer, uint16_t reqlen) {
     (void) itf;
@@ -448,3 +456,4 @@ uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t
     
     return 0;
 }
+*/
