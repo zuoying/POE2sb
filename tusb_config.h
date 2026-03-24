@@ -1,39 +1,24 @@
 #ifndef _TUSB_CONFIG_H_
 #define _TUSB_CONFIG_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define BOARD_TUH_RHPORT 0 // RP2350的USB Host端口（0=默认USB端口）
+#define BOARD_TUH_MAX_SPEED OPT_MODE_DEFAULT
 
-// 仅在未定义时指定MCU类型（避免重定义）
-#ifndef CFG_TUSB_MCU
-#define CFG_TUSB_MCU OPT_MCU_RP2350 // RP2350 专用宏
-#endif
+// 启用USB主机模式
+#define CFG_TUH_ENABLED 1
+#define CFG_TUH_HID 1       // 启用HID主机
+#define CFG_TUH_CDC 0       // 禁用CDC（按需）
+#define CFG_TUH_MSC 0       // 禁用MSC（按需）
+#define CFG_TUH_VENDOR 0    // 禁用Vendor（按需）
 
-// USB工作模式：仅设备模式（按需改为 TUSB_MODE_HOST/TUSB_MODE_DEVICE|TUSB_MODE_HOST）
-#ifndef CFG_TUSB_MODE
-#define CFG_TUSB_MODE TUSB_MODE_DEVICE
-#endif
+// 主机模式最大设备数（至少1，支持1个XInput手柄）
+#define CFG_TUH_DEVICE_MAX 1
+// HID主机实例数（至少1）
+#define CFG_TUH_HID_EP_BUFSIZE 64
 
-// RP2350 内部USB PHY配置
-#define BOARD_TUD_RHPORT 0
-#define BOARD_TUD_RHPORT_SPEED OPT_MODE_FULL_SPEED
-
-// USB端点0大小（默认64）
-#define CFG_TUD_ENDPOINT0_SIZE 64
-
-// 按需启用USB类（示例：启用HID（手柄/键鼠），关闭其他）
-#define CFG_TUD_HID           1    // HID类（XInput手柄需开启）
-#define CFG_TUD_CDC           0    // CDC串口
-#define CFG_TUD_MSC           0    // 大容量存储
-#define CFG_TUD_MIDI          0    // MIDI
-#define CFG_TUD_VENDOR        0    // 自定义厂商类
-
-// HID缓冲区大小（XInput手柄建议64）
+// 设备模式配置（若不需要可删除）
+#define CFG_TUD_ENABLED 1
+#define CFG_TUD_HID 1
 #define CFG_TUD_HID_EP_BUFSIZE 64
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _TUSB_CONFIG_H_ */
