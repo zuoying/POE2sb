@@ -205,8 +205,21 @@ uint8_t tud_xinput_get_led_state_cb(void)
   return XINPUT_LED_1;
 }
 
-// TinyUSB Device回调：震动请求（转发给物理手柄）
-void tud_xinput_set_state_cb(xinput_state_t const* state)
+// 方式1：直接使用别名xinput_state_t（已在头文件定义）
+void tud_xinput_set_state_cb(xinput_state_t const* state) {
+  if (!state) return;
+  
+  // 示例：解析震动指令（XInput状态报告中包含震动参数）
+  uint8_t left_rumble = state->reserved[0];  // 左电机震动值
+  uint8_t right_rumble = state->reserved[1]; // 右电机震动值
+  
+  // 这里添加你的震动处理逻辑（比如控制RP2350的PWM输出）
+  (void)left_rumble;
+  (void)right_rumble;
+}
+
+// 方式2（推荐）：使用原始类型xinput_report_t（避免别名混淆）
+// void tud_xinput_set_state_cb(xinput_report_t const* state) { ... }
 {
   if (hid_dev_addr != 0 && is_xinput_gamepad)
   {
