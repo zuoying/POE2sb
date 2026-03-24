@@ -4,7 +4,10 @@ set(PICO_PLATFORM rp2350 CACHE STRING "Platform")
 set(PICO_BOARD pico2 CACHE STRING "Board")
 
 # 设置PIO-USB路径（兼容GitHub Actions）
-if(DEFINED ENV{PICO_PIO_USB_PATH})
+# 首先检查CMake变量，然后检查环境变量
+if(PICO_PIO_USB_PATH)
+    message(STATUS "Using PICO_PIO_USB_PATH from CMake variable: ${PICO_PIO_USB_PATH}")
+elseif(DEFINED ENV{PICO_PIO_USB_PATH})
     set(PICO_PIO_USB_PATH $ENV{PICO_PIO_USB_PATH} CACHE PATH "Path to Pico-PIO-USB")
     message(STATUS "Using PICO_PIO_USB_PATH from environment: ${PICO_PIO_USB_PATH}")
 else()
@@ -35,29 +38,10 @@ add_compile_definitions(
 )
 
 # 添加主程序目标（带USB功能）
-set(POE2GAMEPAD_SOURCES
+add_executable(poe2gamepad
     main.c
     ws2812.pio.h
 )
-
-# 如果PICO_PIO_USB_PATH已设置，使用外部的PIO-USB库
-if(PICO_PIO_USB_PATH)
-    message(STATUS "Using external Pico-PIO-USB library from: ${PICO_PIO_USB_PATH}")
-    # 在这种情况下，TinyUSB应该能找到pio_usb.h
-else()
-    # 否则，尝试使用Pico SDK内置的PIO-USB
-    # 检查hcd_pio_usb.c文件是否存在
-    if(EXISTS "${PICO_SDK_PATH}/lib/tinyusb/src/portable/raspberrypi/pio_usb/hcd_pio_usb.c")
-        message(STATUS "Adding built-in hcd_pio_usb.c from Pico SDK")
-        list(APPEND POE2GAMEPAD_SOURCES 
-            ${PICO_SDK_PATH}/lib/tinyusb/src/portable/raspberrypi/pio_usb/hcd_pio_usb.c
-        )
-    else()
-        message(WARNING "hcd_pio_usb.c not found in Pico SDK. PIO-USB may not work.")
-    endif()
-endif()
-
-add_executable(poe2gamepad ${POE2GAMEPAD_SOURCES})
 
 target_include_directories(poe2gamepad PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
@@ -68,13 +52,7 @@ if(PICO_PIO_USB_PATH)
     target_include_directories(poe2gamepad PRIVATE
         ${PICO_PIO_USB_PATH}
     )
-else()
-    # 如果没有外部PIO-USB库，尝试添加Pico SDK中的PIO-USB包含路径
-    if(EXISTS "${PICO_SDK_PATH}/lib/tinyusb/src/portable/raspberrypi/pio_usb")
-        target_include_directories(poe2gamepad PRIVATE
-            ${PICO_SDK_PATH}/lib/tinyusb/src/portable/raspberrypi/pio_usb
-        )
-    endif()
+    message(STATUS "Added PICO_PIO_USB_PATH to include directories: ${PICO_PIO_USB_PATH}")
 endif()
 
 target_link_libraries(poe2gamepad

@@ -8,10 +8,9 @@
 #define CFG_TUSB_MCU 111  // RP2350
 #endif
 
-// 定义端点数量（避免编译警告）- 仅在未定义时定义
-#ifndef TUP_DCD_ENDPOINT_MAX
-#define TUP_DCD_ENDPOINT_MAX 8
-#endif
+// 注释掉端点数量定义，使用Pico SDK默认值
+// TUP_DCD_ENDPOINT_MAX已在Pico SDK中定义为16
+// 不要重新定义，避免警告
 
 #define CFG_TUSB_OS               OPT_OS_PICO
 #define CFG_TUSB_MEM_SECTION
@@ -27,7 +26,7 @@
 #define CFG_TUH_ENABLED           1
 #define CFG_TUH_HID               1  // 支持HID设备
 #define CFG_TUH_HUB               1  // 支持USB Hub
-#define CFG_TUH_RPI_PIO_USB       1  // 启用PIO-USB
+#define CFG_TUH_RPI_PIO_USB       0  // 禁用PIO-USB（暂时解决编译问题）
 #define CFG_TUH_MAX_DEVICE        2  // 最多支持2个设备
 #define CFG_TUH_ENUMERATION_BUFSIZE 256
 
