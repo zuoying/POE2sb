@@ -3,11 +3,15 @@
 
 #include <stdint.h>
 
-// 强制指定MCU类型为RP2350
+// 强制指定MCU类型为RP2350（如果尚未定义）
+#ifndef CFG_TUSB_MCU
 #define CFG_TUSB_MCU 111  // RP2350
+#endif
 
 // 定义端点数量（避免编译警告）
+#ifndef TUP_DCD_ENDPOINT_MAX
 #define TUP_DCD_ENDPOINT_MAX 8
+#endif
 
 #define CFG_TUSB_OS               OPT_OS_PICO
 #define CFG_TUSB_MEM_SECTION

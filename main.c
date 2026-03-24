@@ -167,9 +167,13 @@ void core1_main() {
         
         // 定期检查电源状态
         static absolute_time_t last_power_check = {0};
-        if (last_power_check._private_us_since_boot == 0) {
+        static bool power_check_initialized = false;
+        
+        if (!power_check_initialized) {
             last_power_check = get_absolute_time();
+            power_check_initialized = true;
         }
+        
         if (absolute_time_diff_us(get_absolute_time(), last_power_check) > 100000) {
             gpio_put(POWER_PIN, 1); // 确保电源开启
             last_power_check = get_absolute_time();
@@ -237,9 +241,13 @@ int main(void) {
         
         // 根据手柄连接状态更新LED
         static absolute_time_t last_led_update = {0};
-        if (last_led_update._private_us_since_boot == 0) {
+        static bool led_update_initialized = false;
+        
+        if (!led_update_initialized) {
             last_led_update = get_absolute_time();
+            led_update_initialized = true;
         }
+        
         if (absolute_time_diff_us(get_absolute_time(), last_led_update) > 1000000) {
             if (gamepad_connected) {
                 set_led_color(0, 255, 0); // 绿色：手柄已连接

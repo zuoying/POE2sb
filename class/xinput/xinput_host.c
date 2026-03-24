@@ -156,7 +156,7 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
 void xinput_host_init(void) {
   // 确保tinyUSB主机模式已初始化
   if (!tuh_inited()) {
-    tuh_init(BOARD_TUH_RHPORT); // BOARD_TUH_RHPORT为RP2350的USB Host端口（通常是0或1）
+    tuh_init(0); // RP2350 PIO-USB使用端口0
   }
   memset(&xinput_host, 0, sizeof(xinput_host_t));
   memset(&_last_report, 0, sizeof(xinput_report_t));
