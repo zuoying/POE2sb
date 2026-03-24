@@ -7,6 +7,7 @@
 #include "hardware/pio.h"
 #include "pico/multicore.h"
 #include "ws2812.pio.h"
+#include "class/xinput/xinput_host.h"
 
 // 硬件定义
 #define LED_PIN 16
@@ -53,13 +54,28 @@ void set_led_color(uint8_t r, uint8_t g, uint8_t b) {
     put_rgb(r, g, b);
 }
 
+// 打印系统信息
+void print_system_info(void) {
+    printf("=== System Information ===\n");
+    printf("Board: Waveshare RP2350-USB-A\n");
+    printf("PIO-USB Host Pins: D+ GPIO12, D- GPIO13\n");
+    printf("LED Pin: GPIO16\n");
+    printf("Power Control Pin: GPIO18\n");
+    printf("System Clock: %lu Hz\n", clock_get_hz(clk_sys));
+    printf("===========================\n");
+}
+
 // 初始化硬件
 void init_hardware(void) {
+    printf("Initializing hardware...\n");
+    
     // 初始化LED
+    printf("Initializing WS2812 LED on GPIO16\n");
     init_ws2812();
     put_rgb(0, 0, 255); // 蓝色：初始化中
     
     // 初始化5V电源控制
+    printf("Initializing power control on GPIO18\n");
     gpio_init(POWER_PIN);
     gpio_set_dir(POWER_PIN, GPIO_OUT);
     gpio_set_drive_strength(POWER_PIN, GPIO_DRIVE_STRENGTH_16MA); // 最大驱动能力
@@ -71,9 +87,17 @@ void init_hardware(void) {
 // USB主机回调函数
 void tuh_mount_cb(uint8_t dev_addr) {
     printf("USB device mounted, address = %d\n", dev_addr);
-    gamepad_connected = true;
-    set_led_color(0, 255, 0); // 绿色：手柄已连接
-    led_blink(1, 100);
+    
+    // 获取设备描述符以识别设备类型
+    const tusb_desc_device_t* dev_desc = tuh_device_get_descriptor(dev_addr);
+    if (dev_desc) {
+        printf("Device VID: 0x%04X, PID: 0x%04X\n", dev_desc->idVendor, dev_desc->idProduct);
+        printf("Device Class: %u, SubClass: %u, Protocol: %u\n", 
+               dev_desc->bDeviceClass, dev_desc->bDeviceSubClass, dev_desc->bDeviceProtocol);
+    }
+    
+    // 等待XInput主机模块检测手柄
+    // LED状态将由主循环根据gamepad_connected状态更新
 }
 
 void tuh_umount_cb(uint8_t dev_addr) {
@@ -98,8 +122,12 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance,
 void core1_main() {
     printf("Core1: Starting USB host initialization\n");
     
-    // 初始化USB主机
-    tuh_init(1);
+    // 初始化USB主机 - 使用正确的端口号
+    // 对于RP2350 PIO-USB，通常使用端口0
+    tuh_init(0);
+    
+    // 初始化XInput主机模块
+    xinput_host_init();
     
     // 开启手柄电源
     printf("Core1: Enabling gamepad power\n");
@@ -110,7 +138,11 @@ void core1_main() {
     
     // USB主机任务循环
     while (1) {
+        // 处理USB主机事件
         tuh_task();
+        
+        // 处理XInput主机任务
+        xinput_host_task();
         
         // 定期检查电源状态
         static absolute_time_t last_power_check = nil_time;
@@ -126,7 +158,15 @@ void core1_main() {
 // 主函数
 int main(void) {
     stdio_init_all();
+    
+    // 等待串口连接（用于调试）
+    sleep_ms(2000);
+    
     printf("\n=== POE2sb Gamepad Sync ===\n");
+    printf("Build Date: %s %s\n", __DATE__, __TIME__);
+    
+    // 打印系统信息
+    print_system_info();
     
     // 初始化硬件
     init_hardware();
@@ -141,15 +181,35 @@ int main(void) {
     multicore_launch_core1(core1_main);
     
     // 初始化USB设备
-    printf("Initializing USB device\n");
+    printf("Initializing USB device (Virtual XInput)\n");
     tusb_init();
     
-    printf("System initialized\n");
+    printf("System initialization complete\n");
+    printf("Waiting for gamepad connection...\n");
     set_led_color(0, 255, 255); // 青色：系统就绪
     
     // 主循环
     while (1) {
         tud_task();
+        
+        // 检查XInput手柄连接状态
+        static bool last_gamepad_state = false;
+        bool current_gamepad_state = xinput_host.connected;
+        
+        if (current_gamepad_state != last_gamepad_state) {
+            if (current_gamepad_state) {
+                printf("XInput gamepad connected!\n");
+                gamepad_connected = true;
+                set_led_color(0, 255, 0); // 绿色：手柄已连接
+                led_blink(1, 100);
+            } else {
+                printf("XInput gamepad disconnected\n");
+                gamepad_connected = false;
+                set_led_color(255, 0, 0); // 红色：手柄未连接
+                led_blink(2, 100);
+            }
+            last_gamepad_state = current_gamepad_state;
+        }
         
         // 根据手柄连接状态更新LED
         static absolute_time_t last_led_update = nil_time;
@@ -167,6 +227,16 @@ int main(void) {
                 }
             }
             last_led_update = get_absolute_time();
+        }
+        
+        // 如果手柄已连接，可以读取输入数据
+        if (gamepad_connected) {
+            xinput_report_t report;
+            if (xinput_host_get_report(&report)) {
+                // 在这里处理手柄输入数据
+                // printf("Buttons: 0x%04X, LX: %d, LY: %d\n", 
+                //        report.buttons, report.lx, report.ly);
+            }
         }
         
         sleep_ms(10);

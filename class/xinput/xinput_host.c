@@ -20,22 +20,61 @@ static bool _report_updated = false;
 
 // 检查设备是否为XInput手柄（匹配Vid/Pid）
 static bool _is_xinput_device(uint16_t vid, uint16_t pid) {
-  // Xbox 360手柄标准Vid/Pid（可扩展其他XInput设备）
-  return (vid == 0x045E && pid == 0x028E) || 
-         (vid == 0x045E && pid == 0x0291) ||
-         (vid == 0x045E && pid == 0x02A1);
+  // Xbox 360手柄标准Vid/Pid
+  if ((vid == 0x045E && pid == 0x028E) || 
+      (vid == 0x045E && pid == 0x0291) ||
+      (vid == 0x045E && pid == 0x02A1)) {
+    return true;
+  }
+  
+  // 盖世小鸡手柄常见VID/PID
+  if ((vid == 0x3537 && pid == 0x100E) ||  // 盖世小鸡超新星游戏手柄（你提供的）
+      (vid == 0x045E && pid == 0x028F) ||  // Xbox 360 Wireless Receiver
+      (vid == 0x045E && pid == 0x02A0) ||  // Xbox 360 Wireless Controller
+      (vid == 0x045E && pid == 0x02D1) ||  // Xbox One Controller
+      (vid == 0x045E && pid == 0x02E0) ||  // Xbox One S Controller
+      (vid == 0x045E && pid == 0x02FD) ||  // Xbox One Elite Controller
+      (vid == 0x0F0D && pid == 0x00C1) ||  // Hori Fighting Commander
+      (vid == 0x0E6F && pid == 0x0139) ||  // Afterglow Xbox 360 Controller
+      (vid == 0x0E6F && pid == 0x0151) ||  // Afterglow Xbox One Controller
+      (vid == 0x0738 && pid == 0x4718) ||  // Mad Catz Xbox 360 Controller
+      (vid == 0x0738 && pid == 0x4726) ||  // Mad Catz Xbox 360 Controller
+      (vid == 0x0738 && pid == 0x4728) ||  // Mad Catz Xbox 360 Controller
+      (vid == 0x0C12 && pid == 0x0E10) ||  // Zeroplus Xbox Controller
+      (vid == 0x0C12 && pid == 0x0E20)) {  // Zeroplus Xbox Controller
+    return true;
+  }
+  
+  // 调试输出：打印未知设备的VID/PID
+  printf("Unknown device: VID=0x%04X, PID=0x%04X\n", vid, pid);
+  
+  // 尝试识别为XInput设备（通过接口协议）
+  // 如果设备是HID类且使用XInput协议，我们也可以接受
+  return false;
 }
 
 // tinyUSB主机HID匹配回调（识别XInput手柄）
 bool tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_report, uint16_t desc_len) {
   (void) desc_len;
   
+  printf("HID device mounted: addr=%u, instance=%u\n", dev_addr, instance);
+  
   // 获取设备Vid/Pid
   tusb_desc_device_t const* dev_desc = tuh_device_get_descriptor(dev_addr);
-  if (!dev_desc || !_is_xinput_device(dev_desc->idVendor, dev_desc->idProduct)) {
+  if (!dev_desc) {
+    printf("Failed to get device descriptor\n");
+    return false;
+  }
+  
+  printf("Device VID: 0x%04X, PID: 0x%04X\n", dev_desc->idVendor, dev_desc->idProduct);
+  
+  if (!_is_xinput_device(dev_desc->idVendor, dev_desc->idProduct)) {
+    printf("Not an XInput device, skipping\n");
     return false; // 非XInput设备，跳过
   }
 
+  printf("XInput device detected!\n");
+  
   // 记录XInput手柄的设备地址和实例
   xinput_host.dev_addr = dev_addr;
   xinput_host.inst = instance;
@@ -43,14 +82,23 @@ bool tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
   _report_updated = false;
   memset(&_last_report, 0, sizeof(_last_report));
 
-  // 注册HID报告接收回调
-  tuh_hid_set_report_received_cb(dev_addr, instance, NULL);
+  // 打开设备
+  if (!tuh_hid_receive_report(dev_addr, instance)) {
+    printf("Failed to open XInput device\n");
+    xinput_host.connected = false;
+    return false;
+  }
+  
+  printf("XInput device opened successfully\n");
   return true;
 }
 
 // tinyUSB主机HID断开回调
 void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
+  printf("HID device unmounted: addr=%u, instance=%u\n", dev_addr, instance);
+  
   if (xinput_host.dev_addr == dev_addr && xinput_host.inst == instance) {
+    printf("XInput device disconnected\n");
     xinput_host.connected = false;
     xinput_host.dev_addr = 0;
     xinput_host.inst = 0;
@@ -60,11 +108,25 @@ void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
 // 接收XInput手柄报告的回调
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
   if (xinput_host.dev_addr != dev_addr || xinput_host.inst != instance) return;
-  if (len < sizeof(xinput_report_t)) return; // 报告长度不合法
+  if (len < sizeof(xinput_report_t)) {
+    printf("Invalid report length: %u (expected >= %u)\n", len, sizeof(xinput_report_t));
+    return; // 报告长度不合法
+  }
 
+  printf("Received XInput report, length: %u\n", len);
+  
   // 更新缓存的手柄报告
   memcpy(&_last_report, report, sizeof(xinput_report_t));
   _report_updated = true;
+  
+  // 定期打印手柄状态（每10个报告打印一次）
+  static uint32_t report_count = 0;
+  report_count++;
+  if (report_count % 10 == 0) {
+    printf("Report %lu: Buttons=0x%04X, LX=%d, LY=%d, RX=%d, RY=%d\n",
+           report_count, _last_report.buttons, _last_report.lx, _last_report.ly,
+           _last_report.rx, _last_report.ry);
+  }
 }
 
 // 初始化XInput主机模式

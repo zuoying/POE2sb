@@ -1,7 +1,7 @@
 # POE2sb
 ### 1. 项目目标与背景
 项目名称 ：poe2gamepad (Xbox 360 手柄 1 拖 2 同步器) 核心目标 ：
-使用 微雪 RP2350-USB-A 开发板，实现将一个真实的有线 Xbox 360 手柄输入，同步模拟为两个独立的虚拟 Xbox 360 手柄输出给 PC。 功能特性 ：
+使用 微雪 RP2350-USB-A 开发板，实现将一个真实的有线 Xbox 360 手柄(国产盖世小鸡)输入，同步模拟为两个独立的虚拟 Xbox 360 手柄输出给 PC。 功能特性 ：
 
 - 三种模式切换 ：通过手柄组合按键（View + Menu）切换：同步模式（绿灯）、仅主号（蓝灯）、仅副号（红灯）。
 - 防检测优化 ：
@@ -41,3 +41,29 @@
    如果出现 undefined reference to hcd_... ，需要在 CMakeLists.txt 中手动添加 ${PICO_SDK_PATH}/lib/tinyusb/src/portable/raspberrypi/pio_usb/hcd_pio_usb.c 到编译源文件列表。
 ### 总结
 项目逻辑已闭环，目前的挑战完全集中在 针对 RP2350 新平台的交叉编译环境适配 。迁移后，只需确保 CMake 能正确找到并链接 tinyusb 和 pio_usb 的主机驱动，即可产出固件。
+
+### 盖世小鸡手柄识别问题解决方案
+根据你提供的设备信息，盖世小鸡超新星游戏手柄的硬件ID为：
+- **VID**: `0x3537`
+- **PID**: `0x100E`
+
+已进行以下修复：
+
+1. **已添加盖世小鸡手柄VID/PID支持**：在 `xinput_host.c` 的 `_is_xinput_device()` 函数中已添加 `(vid == 0x3537 && pid == 0x100E)`
+2. **修复PIO-USB配置**：修正了USB主机初始化参数和RP2350特定配置
+3. **添加调试工具**：创建了 `test_gamepad_detect.c` 程序用于检测手柄VID/PID
+4. **完善回调函数**：改进了USB主机回调函数链和错误处理
+
+**测试步骤**：
+1. 在GitHub Actions中编译最新代码
+2. 烧录 `poe2gamepad.uf2` 固件到开发板
+3. 连接盖世小鸡手柄到USB-A端口
+4. 观察LED状态和串口输出（如可用）
+
+详细测试说明请参考 [TEST_INSTRUCTIONS.md](TEST_INSTRUCTIONS.md)
+
+### 官方示例参考
+https://github.com/sekigon-gonnoc/Pico-PIO-USB
+https://github.com/wiredopposite/OGX-Mini/
+C:\Users\dring\Documents\trae_projects\Pico-PIO-USB-main
+C:\Users\dring\Documents\trae_projects\RP2350-USB-A-RGB

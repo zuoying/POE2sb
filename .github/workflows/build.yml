@@ -43,7 +43,7 @@ jobs:
         cd build
         cmake -G Ninja \
           -DPICO_PLATFORM=rp2350 \
-          -DPICO_BOARD=pico2 \
+          -DPICO_BOARD=waveshare_rp2350_usb_a \
           -DPICO_PIO_USB_PATH=$GITHUB_WORKSPACE/Pico-PIO-USB \
           -DCMAKE_BUILD_TYPE=Release \
           ..

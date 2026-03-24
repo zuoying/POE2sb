@@ -68,3 +68,23 @@ pico_enable_stdio_usb(test_led_power 0)
 pico_enable_stdio_uart(test_led_power 1)
 
 pico_add_extra_outputs(test_led_power)
+
+# 添加游戏手柄检测程序
+add_executable(test_gamepad_detect
+    test_gamepad_detect.c
+)
+
+target_include_directories(test_gamepad_detect PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}
+)
+
+target_link_libraries(test_gamepad_detect
+    pico_stdlib
+    tinyusb_host
+    hardware_gpio
+)
+
+pico_enable_stdio_usb(test_gamepad_detect 0)
+pico_enable_stdio_uart(test_gamepad_detect 1)
+
+pico_add_extra_outputs(test_gamepad_detect)
