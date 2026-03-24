@@ -7,39 +7,34 @@ extern "C" {
 
 #include "tusb.h"
 
-// XInput手柄报告格式（微软标准）
-typedef struct {
-  uint16_t wButtons;      // 按键位掩码
-  uint8_t  bLeftTrigger;  // 左扳机（0-255）
-  uint8_t  bRightTrigger; // 右扳机（0-255）
-  int16_t  sThumbLX;      // 左摇杆X轴（-32768~32767）
-  int16_t  sThumbLY;      // 左摇杆Y轴
-  int16_t  sThumbRX;      // 右摇杆X轴
-  int16_t  sThumbRY;      // 右摇杆Y轴
-} xinput_report_t;
+// ===================== 新增/修改部分 =====================
+// 兼容旧代码：定义xinput_state_t为xinput_report_t的别名
+typedef struct xinput_report xinput_state_t;
 
-// XInput按键位定义（按需使用）
-#define XINPUT_GAMEPAD_A        (1 << 0)
-#define XINPUT_GAMEPAD_B        (1 << 1)
-#define XINPUT_GAMEPAD_X        (1 << 2)
-#define XINPUT_GAMEPAD_Y        (1 << 3)
-#define XINPUT_GAMEPAD_LB       (1 << 4)
-#define XINPUT_GAMEPAD_RB       (1 << 5)
-#define XINPUT_GAMEPAD_BACK     (1 << 6)
-#define XINPUT_GAMEPAD_START    (1 << 7)
-#define XINPUT_GAMEPAD_L3       (1 << 8)
-#define XINPUT_GAMEPAD_R3       (1 << 9)
-#define XINPUT_GAMEPAD_UP       (1 << 10)
-#define XINPUT_GAMEPAD_DOWN     (1 << 11)
-#define XINPUT_GAMEPAD_LEFT     (1 << 12)
-#define XINPUT_GAMEPAD_RIGHT    (1 << 13)
-#define XINPUT_GAMEPAD_HOME     (1 << 14)
+// XInput手柄报告（状态）结构体（微软标准格式）
+struct xinput_report {
+  uint8_t  report_id;       // 报告ID（固定为0x00）
+  uint16_t buttons;         // 按键状态（位掩码）
+  int8_t   left_trigger;    // 左扳机（0~255）
+  int8_t   right_trigger;   // 右扳机（0~255）
+  int16_t  lx;              // 左摇杆X轴（-32768~32767）
+  int16_t  ly;              // 左摇杆Y轴（-32768~32767）
+  int16_t  rx;              // 右摇杆X轴（-32768~32767）
+  int16_t  ry;              // 右摇杆Y轴（-32768~32767）
+  uint8_t  reserved[6];     // 保留字段
+};
+// 简化类型名（核心类型）
+typedef struct xinput_report xinput_report_t;
+// ========================================================
 
-// 初始化XInput设备
+// XInput设备模式初始化
 void xinput_device_init(void);
 
-// 发送XInput手柄报告到主机
+// 发送XInput手柄报告到主机（电脑）
 bool xinput_device_send_report(xinput_report_t const* report);
+
+// 注册震动回调（主机发送震动指令时触发）
+void xinput_device_set_rumble_cb(void (*cb)(uint8_t left, uint8_t right));
 
 #ifdef __cplusplus
 }
