@@ -64,12 +64,13 @@ target_link_libraries(poe2gamepad
     hardware_gpio
 )
 
-# 如果有PICO_PIO_USB_PATH，链接额外的库
-if(PICO_PIO_USB_PATH)
-    target_link_libraries(poe2gamepad
-        pico_pio_usb
-    )
-endif()
+# 注释掉PIO-USB库链接，因为我们已经禁用了PIO-USB功能
+# 如果需要重新启用PIO-USB，请取消注释并确保PICO_PIO_USB_PATH正确设置
+#if(PICO_PIO_USB_PATH)
+#    target_link_libraries(poe2gamepad
+#        pico_pio_usb
+#    )
+#endif()
 
 pico_enable_stdio_usb(poe2gamepad 0)
 pico_enable_stdio_uart(poe2gamepad 1)
