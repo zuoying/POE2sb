@@ -3,6 +3,15 @@ cmake_minimum_required(VERSION 3.13)
 set(PICO_PLATFORM rp2350 CACHE STRING "Platform")
 set(PICO_BOARD pico2 CACHE STRING "Board")
 
+# 设置PIO-USB路径（兼容GitHub Actions）
+if(DEFINED ENV{PICO_PIO_USB_PATH})
+    set(PICO_PIO_USB_PATH $ENV{PICO_PIO_USB_PATH} CACHE PATH "Path to Pico-PIO-USB")
+    message(STATUS "Using PICO_PIO_USB_PATH from environment: ${PICO_PIO_USB_PATH}")
+else()
+    set(PICO_PIO_USB_PATH "" CACHE PATH "Path to Pico-PIO-USB")
+    message(STATUS "PICO_PIO_USB_PATH not set, will use TinyUSB built-in PIO-USB if available")
+endif()
+
 # 自动从GitHub获取SDK
 set(PICO_SDK_FETCH_FROM_GIT ON)
 set(PICO_SDK_FETCH_FROM_GIT_TAG "master")
@@ -26,14 +35,47 @@ add_compile_definitions(
 )
 
 # 添加主程序目标（带USB功能）
-add_executable(poe2gamepad
+set(POE2GAMEPAD_SOURCES
     main.c
     ws2812.pio.h
 )
 
+# 如果PICO_PIO_USB_PATH已设置，使用外部的PIO-USB库
+if(PICO_PIO_USB_PATH)
+    message(STATUS "Using external Pico-PIO-USB library from: ${PICO_PIO_USB_PATH}")
+    # 在这种情况下，TinyUSB应该能找到pio_usb.h
+else()
+    # 否则，尝试使用Pico SDK内置的PIO-USB
+    # 检查hcd_pio_usb.c文件是否存在
+    if(EXISTS "${PICO_SDK_PATH}/lib/tinyusb/src/portable/raspberrypi/pio_usb/hcd_pio_usb.c")
+        message(STATUS "Adding built-in hcd_pio_usb.c from Pico SDK")
+        list(APPEND POE2GAMEPAD_SOURCES 
+            ${PICO_SDK_PATH}/lib/tinyusb/src/portable/raspberrypi/pio_usb/hcd_pio_usb.c
+        )
+    else()
+        message(WARNING "hcd_pio_usb.c not found in Pico SDK. PIO-USB may not work.")
+    endif()
+endif()
+
+add_executable(poe2gamepad ${POE2GAMEPAD_SOURCES})
+
 target_include_directories(poe2gamepad PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
 )
+
+# 如果有PICO_PIO_USB_PATH，添加包含路径
+if(PICO_PIO_USB_PATH)
+    target_include_directories(poe2gamepad PRIVATE
+        ${PICO_PIO_USB_PATH}
+    )
+else()
+    # 如果没有外部PIO-USB库，尝试添加Pico SDK中的PIO-USB包含路径
+    if(EXISTS "${PICO_SDK_PATH}/lib/tinyusb/src/portable/raspberrypi/pio_usb")
+        target_include_directories(poe2gamepad PRIVATE
+            ${PICO_SDK_PATH}/lib/tinyusb/src/portable/raspberrypi/pio_usb
+        )
+    endif()
+endif()
 
 target_link_libraries(poe2gamepad
     pico_stdlib
@@ -43,6 +85,13 @@ target_link_libraries(poe2gamepad
     hardware_pio
     hardware_gpio
 )
+
+# 如果有PICO_PIO_USB_PATH，链接额外的库
+if(PICO_PIO_USB_PATH)
+    target_link_libraries(poe2gamepad
+        pico_pio_usb
+    )
+endif()
 
 pico_enable_stdio_usb(poe2gamepad 0)
 pico_enable_stdio_uart(poe2gamepad 1)

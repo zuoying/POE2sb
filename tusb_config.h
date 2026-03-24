@@ -8,7 +8,7 @@
 #define CFG_TUSB_MCU 111  // RP2350
 #endif
 
-// 定义端点数量（避免编译警告）
+// 定义端点数量（避免编译警告）- 仅在未定义时定义
 #ifndef TUP_DCD_ENDPOINT_MAX
 #define TUP_DCD_ENDPOINT_MAX 8
 #endif
