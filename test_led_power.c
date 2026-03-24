@@ -52,7 +52,7 @@ void init_hardware(void) {
     // 初始化5V电源控制
     gpio_init(POWER_PIN);
     gpio_set_dir(POWER_PIN, GPIO_OUT);
-    gpio_set_drive_strength(POWER_PIN, GPIO_DRIVE_STRENGTH_16MA); // 最大驱动能力
+    gpio_set_drive_strength(POWER_PIN, GPIO_DRIVE_STRENGTH_12MA); // 12mA驱动能力（Pico SDK 2.1.0兼容）
     gpio_put(POWER_PIN, 0); // 先关闭电源
     
     printf("Hardware initialized\n");
