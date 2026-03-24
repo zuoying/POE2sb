@@ -78,7 +78,15 @@ void init_hardware(void) {
     printf("Initializing power control on GPIO18\n");
     gpio_init(POWER_PIN);
     gpio_set_dir(POWER_PIN, GPIO_OUT);
-    gpio_set_drive_strength(POWER_PIN, GPIO_DRIVE_STRENGTH_16MA); // 最大驱动能力
+    // 使用正确的驱动强度常量（根据Pico SDK版本）
+    #ifdef GPIO_DRIVE_STRENGTH_16MA
+        gpio_set_drive_strength(POWER_PIN, GPIO_DRIVE_STRENGTH_16MA);
+    #elif defined(GPIO_DRIVE_STRENGTH_12MA)
+        gpio_set_drive_strength(POWER_PIN, GPIO_DRIVE_STRENGTH_12MA);
+    #else
+        // 默认使用中等驱动强度
+        gpio_set_drive_strength(POWER_PIN, GPIO_DRIVE_STRENGTH_8MA);
+    #endif
     gpio_put(POWER_PIN, 0); // 先关闭电源
     
     printf("Hardware initialized\n");
@@ -89,12 +97,25 @@ void tuh_mount_cb(uint8_t dev_addr) {
     printf("USB device mounted, address = %d\n", dev_addr);
     
     // 获取设备描述符以识别设备类型
-    const tusb_desc_device_t* dev_desc = tuh_device_get_descriptor(dev_addr);
-    if (dev_desc) {
-        printf("Device VID: 0x%04X, PID: 0x%04X\n", dev_desc->idVendor, dev_desc->idProduct);
-        printf("Device Class: %u, SubClass: %u, Protocol: %u\n", 
-               dev_desc->bDeviceClass, dev_desc->bDeviceSubClass, dev_desc->bDeviceProtocol);
-    }
+    // 注意：tuh_device_get_descriptor API在TinyUSB不同版本中可能有变化
+    // 这里使用条件编译来处理不同版本
+    #ifdef TINYUSB_VERSION_MAJOR
+        #if TINYUSB_VERSION_MAJOR >= 1
+            // 新版本TinyUSB API
+            const tusb_desc_device_t* dev_desc = tuh_device_get_descriptor(dev_addr);
+            if (dev_desc) {
+                printf("Device VID: 0x%04X, PID: 0x%04X\n", dev_desc->idVendor, dev_desc->idProduct);
+                printf("Device Class: %u, SubClass: %u, Protocol: %u\n", 
+                       dev_desc->bDeviceClass, dev_desc->bDeviceSubClass, dev_desc->bDeviceProtocol);
+            }
+        #else
+            // 旧版本API，暂时跳过设备描述符获取
+            printf("Device connected (device descriptor API not available in this TinyUSB version)\n");
+        #endif
+    #else
+        // 未知版本，使用简化处理
+        printf("Device connected\n");
+    #endif
     
     // 等待XInput主机模块检测手柄
     // LED状态将由主循环根据gamepad_connected状态更新
@@ -145,7 +166,10 @@ void core1_main() {
         xinput_host_task();
         
         // 定期检查电源状态
-        static absolute_time_t last_power_check = nil_time;
+        static absolute_time_t last_power_check = {0};
+        if (last_power_check._private_us_since_boot == 0) {
+            last_power_check = get_absolute_time();
+        }
         if (absolute_time_diff_us(get_absolute_time(), last_power_check) > 100000) {
             gpio_put(POWER_PIN, 1); // 确保电源开启
             last_power_check = get_absolute_time();
@@ -212,7 +236,10 @@ int main(void) {
         }
         
         // 根据手柄连接状态更新LED
-        static absolute_time_t last_led_update = nil_time;
+        static absolute_time_t last_led_update = {0};
+        if (last_led_update._private_us_since_boot == 0) {
+            last_led_update = get_absolute_time();
+        }
         if (absolute_time_diff_us(get_absolute_time(), last_led_update) > 1000000) {
             if (gamepad_connected) {
                 set_led_color(0, 255, 0); // 绿色：手柄已连接

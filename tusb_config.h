@@ -6,6 +6,9 @@
 // 强制指定MCU类型为RP2350
 #define CFG_TUSB_MCU 111  // RP2350
 
+// 定义端点数量（避免编译警告）
+#define TUP_DCD_ENDPOINT_MAX 8
+
 #define CFG_TUSB_OS               OPT_OS_PICO
 #define CFG_TUSB_MEM_SECTION
 #define CFG_TUSB_MEM_ALIGN        __attribute__((aligned(4)))
