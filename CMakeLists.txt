@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
 set(PICO_PLATFORM rp2350 CACHE STRING "Platform")
-set(PICO_BOARD waveshare_rp2350_usb_a CACHE STRING "Board")
+set(PICO_BOARD pico2 CACHE STRING "Board")
 
 # 自动从GitHub获取SDK
 set(PICO_SDK_FETCH_FROM_GIT ON)
@@ -15,7 +15,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 pico_sdk_init()
 
-# 配置PIO-USB引脚 (微雪RP2350-USB-A)
+# 微雪RP2350-USB-A特定的引脚配置
+# USB-A端口使用GPIO12 (D+) 和 GPIO13 (D-)
 add_compile_definitions(
     PICO_RP2350=1
     PIO_USB_HOST_D_PLUS_PIN=12
