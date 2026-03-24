@@ -1,32 +1,42 @@
+# 设置最低CMake版本
 cmake_minimum_required(VERSION 3.13)
 
-set(PICO_PLATFORM rp2350 CACHE STRING "Platform")
-set(PICO_BOARD pico2 CACHE STRING "Board")
+# 强制指定平台为RP2350
+set(PICO_PLATFORM rp2350 CACHE STRING "Platform" FORCE)
 
-include(pico_sdk_import.cmake)
+# 引入Pico SDK
+include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-project(poe2gamepad C CXX ASM)
+# 项目名称
+project(rp2350_gaishichick_xinput C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
+# 初始化Pico SDK
 pico_sdk_init()
 
-add_compile_definitions(PICO_RP2350=1)
-
-add_executable(poe2gamepad
+# 添加可执行文件
+add_executable(${PROJECT_NAME}
     main.c
 )
 
-target_include_directories(poe2gamepad PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}
-)
-
-target_link_libraries(poe2gamepad
+# 链接库（新增tinyusb_host）
+target_link_libraries(${PROJECT_NAME}
     pico_stdlib
     tinyusb_device
+    tinyusb_host
+    tinyusb_board
 )
 
-pico_enable_stdio_usb(poe2gamepad 0)
-pico_enable_stdio_uart(poe2gamepad 1)
+# 启用USB（关闭串口USB，避免冲突）
+pico_enable_stdio_usb(${PROJECT_NAME} 0)
+pico_enable_stdio_uart(${PROJECT_NAME} 1)
 
-pico_add_extra_outputs(poe2gamepad)
+# 生成UF2文件
+pico_add_extra_outputs(${PROJECT_NAME})
+
+# 编译选项（指定RP2350，启用Host+Device）
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    CFG_TUSB_MCU=OPT_MCU_RP2350
+    CFG_TUSB_DEBUG=0 # 关闭调试（如需调试改为1）
+)
