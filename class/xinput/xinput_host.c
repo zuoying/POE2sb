@@ -54,7 +54,7 @@ static bool _is_xinput_device(uint16_t vid, uint16_t pid) {
 }
 
 // tinyUSB主机HID匹配回调（识别XInput手柄）
-bool tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_report, uint16_t desc_len) {
+void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_report, uint16_t desc_len) {
   (void) desc_len;
   
   printf("HID device mounted: addr=%u, instance=%u\n", dev_addr, instance);
@@ -93,7 +93,7 @@ bool tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
   
   if (!_is_xinput_device(vid, pid)) {
     printf("Not an XInput device, skipping\n");
-    return false; // 非XInput设备，跳过
+    return; // 非XInput设备，跳过
   }
 
   printf("XInput device detected!\n");
@@ -109,11 +109,10 @@ bool tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
   if (!tuh_hid_receive_report(dev_addr, instance)) {
     printf("Failed to open XInput device\n");
     xinput_host.connected = false;
-    return false;
+    return;
   }
   
   printf("XInput device opened successfully\n");
-  return true;
 }
 
 // tinyUSB主机HID断开回调
