@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "pico/time.h"
 
 // 全局工作模式
 work_mode_t current_mode = SYNC_MODE;
