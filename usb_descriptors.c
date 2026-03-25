@@ -18,16 +18,17 @@ tusb_desc_device_t const desc_device = {
     .bNumConfigurations = 0x01
 };
 
-// XInput HID报告描述符
+// 通用游戏手柄HID报告描述符
+// 20字节报告，匹配xinput_report_t结构
 uint8_t const desc_hid_report[] = {
     0x05, 0x01,        // Usage Page (Generic Desktop)
     0x09, 0x05,        // Usage (Game Pad)
     0xA1, 0x01,        // Collection (Application)
     
-    // 报告ID
+    // 报告ID (1字节)
     0x85, 0x01,        //   Report ID (1)
     
-    // 按钮 (16位)
+    // 按钮 (16位 = 2字节)
     0x05, 0x09,        //   Usage Page (Button)
     0x19, 0x01,        //   Usage Minimum (Button 1)
     0x29, 0x10,        //   Usage Maximum (Button 16)
@@ -37,52 +38,42 @@ uint8_t const desc_hid_report[] = {
     0x95, 0x10,        //   Report Count (16)
     0x81, 0x02,        //   Input (Data,Var,Abs)
     
-    // 方向键 (4位)
+    // 左右扳机 (2字节)
     0x05, 0x01,        //   Usage Page (Generic Desktop)
-    0x09, 0x39,        //   Usage (Hat switch)
+    0x09, 0x33,        //   Usage (Rx) - 左扳机
+    0x09, 0x34,        //   Usage (Ry) - 右扳机
     0x15, 0x00,        //   Logical Minimum (0)
-    0x25, 0x07,        //   Logical Maximum (7)
+    0x25, 0xFF,        //   Logical Maximum (255)
     0x35, 0x00,        //   Physical Minimum (0)
-    0x46, 0x3B, 0x01,  //   Physical Maximum (315)
-    0x65, 0x14,        //   Unit (Degrees)
-    0x75, 0x04,        //   Report Size (4)
-    0x95, 0x01,        //   Report Count (1)
+    0x45, 0xFF,        //   Physical Maximum (255)
+    0x75, 0x08,        //   Report Size (8)
+    0x95, 0x02,        //   Report Count (2)
     0x81, 0x02,        //   Input (Data,Var,Abs)
     
-    // 保留4位
-    0x75, 0x04,        //   Report Size (4)
-    0x95, 0x01,        //   Report Count (1)
-    0x81, 0x03,        //   Input (Const,Var,Abs)
-    
-    // 左摇杆 X/Y
+    // 左摇杆 X/Y (4字节 = 2个16位值)
     0x05, 0x01,        //   Usage Page (Generic Desktop)
     0x09, 0x30,        //   Usage (X)
     0x09, 0x31,        //   Usage (Y)
-    0x15, 0x81,        //   Logical Minimum (-127)
-    0x25, 0x7F,        //   Logical Maximum (127)
-    0x75, 0x08,        //   Report Size (8)
+    0x16, 0x00, 0x80,  //   Logical Minimum (-32768)
+    0x26, 0xFF, 0x7F,  //   Logical Maximum (32767)
+    0x75, 0x10,        //   Report Size (16)
     0x95, 0x02,        //   Report Count (2)
     0x81, 0x02,        //   Input (Data,Var,Abs)
     
-    // 右摇杆 X/Y
+    // 右摇杆 X/Y (4字节 = 2个16位值)
     0x05, 0x01,        //   Usage Page (Generic Desktop)
     0x09, 0x32,        //   Usage (Z)
     0x09, 0x35,        //   Usage (Rz)
-    0x15, 0x81,        //   Logical Minimum (-127)
-    0x25, 0x7F,        //   Logical Maximum (127)
-    0x75, 0x08,        //   Report Size (8)
+    0x16, 0x00, 0x80,  //   Logical Minimum (-32768)
+    0x26, 0xFF, 0x7F,  //   Logical Maximum (32767)
+    0x75, 0x10,        //   Report Size (16)
     0x95, 0x02,        //   Report Count (2)
     0x81, 0x02,        //   Input (Data,Var,Abs)
     
-    // 左右扳机键
-    0x05, 0x01,        //   Usage Page (Generic Desktop)
-    0x09, 0x33,        //   Usage (Rx)
-    0x09, 0x34,        //   Usage (Ry)
-    0x15, 0x00,        //   Logical Minimum (0)
-    0x25, 0xFF,        //   Logical Maximum (255)
+    // 保留字段 (6字节)
     0x75, 0x08,        //   Report Size (8)
-    0x95, 0x02,        //   Report Count (2)
-    0x81, 0x02,        //   Input (Data,Var,Abs)
+    0x95, 0x06,        //   Report Count (6)
+    0x81, 0x03,        //   Input (Constant,Var,Abs)
     
     0xC0               // End Collection
 };
