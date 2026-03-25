@@ -31,46 +31,32 @@ jobs:
         cd pico-sdk
         git submodule update --init --recursive
         echo "PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk" >> $GITHUB_ENV
-
-    - name: Set up Pico-PIO-USB
-      run: |
-        git clone --depth 1 --branch main https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
-        cd Pico-PIO-USB
-        echo "PICO_PIO_USB_PATH=$(pwd)" >> $GITHUB_ENV
-        echo "PICO_PIO_USB_PATH set to: $(pwd)"
-        ls -la  # 显示克隆的文件
-        # 验证头文件存在
-        if [ -f "pio_usb.h" ]; then
-            echo "✓ pio_usb.h found in Pico-PIO-USB"
+        # 检查PIO-USB头文件是否在SDK中
+        echo "=== Checking for PIO-USB in Pico SDK ==="
+        if [ -f "lib/tinyusb/hw/bsp/rp2_common/pio_usb.h" ]; then
+            echo "✓ Found pio_usb.h in Pico SDK"
         else
-            echo "✗ ERROR: pio_usb.h not found in Pico-PIO-USB"
-            find . -name "*.h" | head -20
+            echo "Looking for pio_usb.h in SDK..."
+            find . -name "pio_usb.h" -type f 2>/dev/null | head -10
         fi
 
-    - name: Configure CMake
+    - name: Configure CMake (without external PIO-USB)
       run: |
         mkdir build
         cd build
-        echo "Configuring CMake with PICO_PIO_USB_PATH=$PICO_PIO_USB_PATH"
+        echo "Configuring CMake without external PIO-USB"
         echo "PICO_SDK_PATH=$PICO_SDK_PATH"
-        # 检查PIO-USB头文件是否存在
-        if [ -f "$PICO_PIO_USB_PATH/pio_usb.h" ]; then
-            echo "Found pio_usb.h at: $PICO_PIO_USB_PATH/pio_usb.h"
-        else
-            echo "WARNING: pio_usb.h not found at $PICO_PIO_USB_PATH/"
-            echo "Listing PICO_PIO_USB_PATH contents:"
-            ls -la "$PICO_PIO_USB_PATH/"
-            echo "Searching for pio_usb.h in subdirectories..."
-            find "$PICO_PIO_USB_PATH" -name "pio_usb.h" 2>/dev/null
-        fi
+        # 使用简化的CMake命令，不指定外部PIO-USB路径
         cmake -G Ninja \
           -DPICO_PLATFORM=rp2350 \
           -DPICO_BOARD=pico2 \
-          -DPICO_PIO_USB_PATH=$PICO_PIO_USB_PATH \
           -DPICO_SDK_PATH=$PICO_SDK_PATH \
           -DCMAKE_BUILD_TYPE=Release \
           .. 2>&1 | tee cmake_output.log
         echo "CMake configuration complete"
+        # 显示生成的包含路径
+        echo "=== Generated include paths ==="
+        cat cmake_output.log | grep -i "include" || true
 
     - name: Build
       run: |

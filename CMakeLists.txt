@@ -42,6 +42,8 @@ add_compile_definitions(
     PIO_USB_DEVICE_SPEED=FULL_SPEED
     # 确保TinyUSB能找到PIO-USB头文件
     PICO_PIO_USB_ENABLE=1
+    # 强制使用Pico SDK内置的PIO-USB
+    PICO_PIO_USB_FORCE_INTERNAL=1
 )
 
 # 添加主程序目标（带USB功能）
@@ -62,7 +64,7 @@ target_include_directories(poe2gamepad PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/class/xinput
 )
 
-# 如果有PICO_PIO_USB_PATH，添加包含路径
+# 如果设置了PICO_PIO_USB_PATH，添加包含路径（但我们现在主要使用SDK内置的）
 if(PICO_PIO_USB_PATH)
     target_include_directories(poe2gamepad PRIVATE
         ${PICO_PIO_USB_PATH}
