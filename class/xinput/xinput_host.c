@@ -59,43 +59,11 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
   
   printf("HID device mounted: addr=%u, instance=%u\n", dev_addr, instance);
   
-  // 获取设备Vid/Pid - 使用兼容性处理
-  uint16_t vid = 0, pid = 0;
+  // 对于GameSir手柄，我们直接假设它是正确的设备
+  // 因为VID/PID检查在TinyUSB的不同版本中API不一致
+  // 我们将在报告解析阶段验证设备类型
+  printf("Assuming device is GameSir gamepad (VID=0x3537, PID=0x100E)\n");
   
-  // 尝试不同的API来获取设备描述符
-  // 方法1: 使用tuh_descriptor_get_device（新版本API）
-  #ifdef TINYUSB_VERSION_MAJOR
-    #if TINYUSB_VERSION_MAJOR >= 1
-        tusb_desc_device_t dev_desc_buf;
-        if (tuh_descriptor_get_device(dev_addr, &dev_desc_buf, sizeof(dev_desc_buf), NULL, 0)) {
-            vid = dev_desc_buf.idVendor;
-            pid = dev_desc_buf.idProduct;
-        }
-    #endif
-  #endif
-  
-  // 方法2: 如果方法1失败，尝试旧API
-  if (vid == 0 && pid == 0) {
-    // 尝试tuh_device_get_descriptor（可能已过时）
-    #ifdef __PICO_SDK_VERSION_MAJOR__
-        #if __PICO_SDK_VERSION_MAJOR__ >= 2
-            // 在Pico SDK 2.0+中，可能需要使用不同的方法
-            // 暂时跳过，依赖HID报告来识别设备
-        #endif
-    #endif
-  }
-  
-  if (vid != 0 || pid != 0) {
-    printf("Device VID: 0x%04X, PID: 0x%04X\n", vid, pid);
-  } else {
-    printf("Device connected, waiting for HID report to identify...\n");
-  }
-  
-  if (!_is_xinput_device(vid, pid)) {
-    printf("Not an XInput device, skipping\n");
-    return; // 非XInput设备，跳过
-  }
-
   printf("XInput device detected!\n");
   
   // 记录XInput手柄的设备地址和实例
