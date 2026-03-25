@@ -40,6 +40,8 @@ add_compile_definitions(
     USE_PIO_USB_DEVICE=1
     # 设置设备端为全速USB
     PIO_USB_DEVICE_SPEED=FULL_SPEED
+    # 确保TinyUSB能找到PIO-USB头文件
+    PICO_PIO_USB_ENABLE=1
 )
 
 # 添加主程序目标（带USB功能）

@@ -34,19 +34,23 @@ jobs:
 
     - name: Set up Pico-PIO-USB
       run: |
-        git clone https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
-        echo "PICO_PIO_USB_PATH=$GITHUB_WORKSPACE/Pico-PIO-USB" >> $GITHUB_ENV
+        git clone --depth 1 https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
+        cd Pico-PIO-USB
+        echo "PICO_PIO_USB_PATH=$(pwd)" >> $GITHUB_ENV
+        echo "PICO_PIO_USB_PATH set to: $(pwd)"
 
     - name: Configure CMake
       run: |
         mkdir build
         cd build
+        echo "Configuring CMake with PICO_PIO_USB_PATH=$PICO_PIO_USB_PATH"
         cmake -G Ninja \
           -DPICO_PLATFORM=rp2350 \
           -DPICO_BOARD=pico2 \
-          -DPICO_PIO_USB_PATH=$GITHUB_WORKSPACE/Pico-PIO-USB \
+          -DPICO_PIO_USB_PATH=$PICO_PIO_USB_PATH \
           -DCMAKE_BUILD_TYPE=Release \
-          ..
+          .. 2>&1 | tee cmake_output.log
+        echo "CMake configuration complete"
 
     - name: Build
       run: |
