@@ -3,9 +3,9 @@
 
 #include "tusb.h"
 
-// 使用Xbox 360兼容的VID/PID（Windows会自动识别为XInput设备）
-#define GAMEPAD_VID 0x045E  // Microsoft
-#define GAMEPAD_PID 0x028E  // Xbox 360 Controller
+// 使用通用HID游戏手柄的VID/PID
+#define GAMEPAD_VID 0x1209  // 通用测试VID
+#define GAMEPAD_PID 0x0001  // 通用HID游戏手柄PID
 
 // HID端点号
 #define EPNUM_HID   0x01

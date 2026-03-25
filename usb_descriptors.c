@@ -3,7 +3,7 @@
 // XInput游戏手柄设备描述符
 tusb_desc_device_t const desc_device = {
     .bLength = sizeof(tusb_desc_device_t),
-    .bDescriptorType = TUSB_DESC_DEVICE,
+    .bDescriptorType = 0x01,           // 设备描述符类型 (0x01)
     .bcdUSB = 0x0200,
     .bDeviceClass = 0x00,        // 每个接口指定类
     .bDeviceSubClass = 0x00,
@@ -150,7 +150,7 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     if (index == 0) {
         // 语言ID (英语)
         desc_str[1] = 0x0409;
-        desc_str[0] = (TUSB_DESC_STRING << 8) | 4;
+        desc_str[0] = (0x03 << 8) | 4;  // 字符串描述符类型 (0x03)
         return desc_str;
     }
     
@@ -177,7 +177,7 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     }
     
     len = strlen(str);
-    desc_str[0] = (TUSB_DESC_STRING << 8) | (2 * len + 2);
+    desc_str[0] = (0x03 << 8) | (2 * len + 2);  // 字符串描述符类型 (0x03)
     for (uint8_t i = 0; i < len; i++) {
         desc_str[i + 1] = str[i];
     }
