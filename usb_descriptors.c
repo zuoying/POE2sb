@@ -1,21 +1,25 @@
 #include "usb_descriptors.h"
+#include "tusb.h"
+#include <stddef.h>
+#include <string.h>
 
-// XInput游戏手柄设备描述符
-tusb_desc_device_t const desc_device = {
-    .bLength = sizeof(tusb_desc_device_t),
-    .bDescriptorType = 0x01,           // 设备描述符类型 (0x01)
-    .bcdUSB = 0x0200,                  // USB 2.0
-    .bDeviceClass = 0x00,              // 每个接口指定类
-    .bDeviceSubClass = 0x00,
-    .bDeviceProtocol = 0x00,
-    .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
-    .idVendor = GAMEPAD_VID,           // 0x1209
-    .idProduct = GAMEPAD_PID,          // 0x0001
-    .bcdDevice = 0x0100,               // Device version 1.0
-    .iManufacturer = 0x01,             // String index 1
-    .iProduct = 0x02,                  // String index 2
-    .iSerialNumber = 0x03,             // String index 3
-    .bNumConfigurations = 0x01
+// XInput游戏手柄设备描述符（USB设备描述符）
+// 使用字节数组形式，避免结构体初始化问题
+uint8_t const desc_device[] = {
+    18,         // bLength: 描述符长度 (18字节)
+    0x01,       // bDescriptorType: 设备描述符 (0x01)
+    0x00, 0x02, // bcdUSB: USB 2.0 (0x0200)
+    0x00,       // bDeviceClass: 每个接口指定类
+    0x00,       // bDeviceSubClass
+    0x00,       // bDeviceProtocol
+    64,         // bMaxPacketSize0: 端点0最大包大小 (CFG_TUD_ENDPOINT0_SIZE)
+    0x09, 0x12, // idVendor: GAMEPAD_VID (0x1209) - 小端格式
+    0x01, 0x00, // idProduct: GAMEPAD_PID (0x0001) - 小端格式
+    0x00, 0x01, // bcdDevice: 设备版本 1.0 (0x0100)
+    0x01,       // iManufacturer: 字符串索引 1
+    0x02,       // iProduct: 字符串索引 2
+    0x03,       // iSerialNumber: 字符串索引 3
+    0x01        // bNumConfigurations: 配置数量
 };
 
 // XInput HID报告描述符（20字节，Microsoft标准格式）
@@ -142,7 +146,7 @@ uint8_t const desc_configuration[] = {
 };
 
 uint8_t const* tud_descriptor_device_cb(void) {
-    return (uint8_t const*) &desc_device;
+    return desc_device;
 }
 
 uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
