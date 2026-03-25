@@ -1,11 +1,10 @@
 #include "class/xinput/xinput_device.h"
 
-// XInput设备端点定义（需与tusb_config.h中HID缓冲区匹配）
-#define XINPUT_EP_IN 0x81
-#define XINPUT_REPORT_SIZE 20 // XInput标准报告长度
-
 // 设备就绪标志
 static bool _xinput_ready = false;
+
+// 震动回调函数指针
+static void (*_rumble_callback)(uint8_t itf, uint8_t left, uint8_t right) = NULL;
 
 // tinyUSB设备初始化回调（自动触发）
 void tud_hid_mount_cb(void) {
@@ -22,12 +21,27 @@ void xinput_device_init(void) {
   _xinput_ready = tud_ready(); // 同步tinyUSB就绪状态
 }
 
-// 发送XInput报告（封装tinyUSB的HID发送接口）
-bool xinput_device_send_report(xinput_report_t const* report) {
+// 发送XInput报告到指定接口
+bool xinput_device_send_report(uint8_t itf, xinput_report_t const* report) {
   if (!_xinput_ready || !report) return false;
   
-  // 发送HID报告（XInput复用HID端点）
-  return tud_hid_report(0, report, sizeof(xinput_report_t));
+  // 发送HID报告到指定接口
+  return tud_hid_report(itf, report, sizeof(xinput_report_t));
+}
+
+// 发送相同的报告到两个接口（同步模式）
+bool xinput_device_send_report_both(xinput_report_t const* report) {
+  if (!_xinput_ready || !report) return false;
+  
+  bool success1 = tud_hid_report(0, report, sizeof(xinput_report_t));
+  bool success2 = tud_hid_report(1, report, sizeof(xinput_report_t));
+  
+  return success1 && success2;
+}
+
+// 注册震动回调
+void xinput_device_set_rumble_cb(void (*cb)(uint8_t itf, uint8_t left, uint8_t right)) {
+  _rumble_callback = cb;
 }
 
 // （可选）处理主机发来的XInput指令（如震动、LED）
@@ -42,10 +56,13 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 
 // （可选）接收主机写入的XInput报告（如震动控制）
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
-  (void) instance;
-  (void) report_id;
-  (void) report_type;
-  (void) buffer;
-  (void) bufsize;
-  // 极简实现：暂不处理震动/LED等主机指令
+  // 处理震动指令
+  if (report_type == HID_REPORT_TYPE_OUTPUT && _rumble_callback != NULL) {
+    // XInput震动报告格式：8字节
+    if (bufsize >= 8) {
+      uint8_t left_motor = buffer[2];  // 左电机（低频震动）
+      uint8_t right_motor = buffer[3]; // 右电机（高频震动）
+      _rumble_callback(instance, left_motor, right_motor);
+    }
+  }
 }

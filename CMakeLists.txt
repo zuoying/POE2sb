@@ -46,13 +46,17 @@ add_compile_definitions(
 add_executable(poe2gamepad
     main.c
     usb_descriptors.c
+    led_manager.c
+    mode_manager.c
     ws2812.pio.h
-    class/xinput/xinput_host.c
+    class/hid/hid_host.c
+    class/hid/hid_xinput_converter.c
     class/xinput/xinput_device.c
 )
 
 target_include_directories(poe2gamepad PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/class/hid
     ${CMAKE_CURRENT_LIST_DIR}/class/xinput
 )
 

@@ -18,15 +18,14 @@ tusb_desc_device_t const desc_device = {
     .bNumConfigurations = 0x01
 };
 
-// 通用游戏手柄HID报告描述符
-// 20字节报告，匹配xinput_report_t结构
+// XInput HID报告描述符（20字节，Microsoft标准格式）
 uint8_t const desc_hid_report[] = {
     0x05, 0x01,        // Usage Page (Generic Desktop)
     0x09, 0x05,        // Usage (Game Pad)
     0xA1, 0x01,        // Collection (Application)
     
-    // 报告ID (1字节)
-    0x85, 0x01,        //   Report ID (1)
+    // 报告ID (1字节) - XInput使用0x00
+    0x85, 0x00,        //   Report ID (0)
     
     // 按钮 (16位 = 2字节)
     0x05, 0x09,        //   Usage Page (Button)
@@ -78,20 +77,21 @@ uint8_t const desc_hid_report[] = {
     0xC0               // End Collection
 };
 
-// HID配置描述符
+// HID配置描述符 - 双接口版本
 uint8_t const desc_configuration[] = {
     // 配置描述符 (9 bytes)
     9, 0x02,                      // 配置描述符类型 (0x02)
-    34, 0,                        // 配置总长度 (little-endian: 34 = 0x22)
-    0x01,                         // 接口数量
+    68, 0,                        // 配置总长度 (little-endian: 68 = 0x44)
+    0x02,                         // 接口数量 (2个接口)
     0x01,                         // 配置值
     0x00,                         // 字符串索引
     0x80,                         // 供电模式 (总线供电)
     0x32,                         // 最大电流 (100mA)
     
+    // ===== 接口0：第一个XInput手柄 =====
     // 接口描述符 (9 bytes)
     9, 0x04,                      // 接口描述符类型 (0x04)
-    0x00,                         // 接口号
+    0x00,                         // 接口号 0
     0x00,                         // 备用设置
     0x01,                         // 端点数量
     0x03,                         // 接口类 (HID)
@@ -112,6 +112,32 @@ uint8_t const desc_configuration[] = {
     0x81,                         // 端点地址 (IN 1)
     0x03,                         // 属性 (中断)
     64, 0,                        // 最大包大小 (little-endian: 64 = 0x40)
+    0x01,                         // 轮询间隔 (1ms)
+    
+    // ===== 接口1：第二个XInput手柄 =====
+    // 接口描述符 (9 bytes)
+    9, 0x04,                      // 接口描述符类型 (0x04)
+    0x01,                         // 接口号 1
+    0x00,                         // 备用设置
+    0x01,                         // 端点数量
+    0x03,                         // 接口类 (HID)
+    0x00,                         // 接口子类
+    0x00,                         // 接口协议
+    0x00,                         // 字符串索引
+    
+    // HID描述符 (9 bytes)
+    9, 0x21,                      // HID描述符类型 (0x21)
+    0x11, 0x01,                   // HID版本 (1.11)
+    0x00,                         // 国家代码
+    0x01,                         // 描述符数量
+    0x22,                         // 报告描述符类型 (0x22)
+    61, 0,                        // 报告描述符长度 (61字节)
+    
+    // 端点描述符 (7 bytes)
+    7, 0x05,                      // 端点描述符类型 (0x05)
+    0x82,                         // 端点地址 (IN 2)
+    0x03,                         // 属性 (中断)
+    64, 0,                        // 最大包大小 (little-endian: 64 = 0x40)
     0x01                          // 轮询间隔 (1ms)
 };
 
@@ -128,10 +154,16 @@ uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
 #define DESC_HID_REPORT_LEN 61
 uint16_t const desc_hid_report_len = DESC_HID_REPORT_LEN;
 
-// HID报告描述符回调
+// HID报告描述符回调（支持双接口）
 uint8_t const* tud_hid_descriptor_report_cb(uint8_t itf) {
-    (void)itf;
+    // 两个接口都使用相同的报告描述符
     return desc_hid_report;
+}
+
+// HID报告发送函数
+bool send_xinput_report(uint8_t itf, const xinput_report_t* report) {
+    if (itf >= 2) return false;
+    return tud_hid_report(itf, report, sizeof(xinput_report_t));
 }
 
 // 字符串描述符
