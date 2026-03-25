@@ -105,8 +105,7 @@ uint8_t const desc_configuration[] = {
     0x00,                         // 国家代码
     0x01,                         // 描述符数量
     0x22,                         // 报告描述符类型 (0x22)
-    (uint8_t)(sizeof(desc_hid_report) & 0xFF),        // 描述符长度 (low byte)
-    (uint8_t)((sizeof(desc_hid_report) >> 8) & 0xFF), // 描述符长度 (high byte)
+    61, 0,                        // 报告描述符长度 (61字节)
     
     // 端点描述符 (7 bytes)
     7, 0x05,                      // 端点描述符类型 (0x05)
@@ -126,7 +125,8 @@ uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
 }
 
 // HID报告描述符长度
-uint16_t const desc_hid_report_len = sizeof(desc_hid_report);
+#define DESC_HID_REPORT_LEN 61
+uint16_t const desc_hid_report_len = DESC_HID_REPORT_LEN;
 
 // HID报告描述符回调
 uint8_t const* tud_hid_descriptor_report_cb(uint8_t itf) {
