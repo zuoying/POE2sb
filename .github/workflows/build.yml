@@ -30,33 +30,25 @@ jobs:
         git clone --depth 1 --branch 2.1.0 https://github.com/raspberrypi/pico-sdk.git
         cd pico-sdk
         git submodule update --init --recursive
+        # 下载TinyUSB的PIO-USB依赖（pio_usb.h等）
+        cd lib/tinyusb
+        python3 tools/get_deps.py rp2040
+        cd ../../..
         echo "PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk" >> $GITHUB_ENV
-        # 检查PIO-USB头文件是否在SDK中
-        echo "=== Checking for PIO-USB in Pico SDK ==="
-        if [ -f "lib/tinyusb/hw/bsp/rp2_common/pio_usb.h" ]; then
-            echo "✓ Found pio_usb.h in Pico SDK"
-        else
-            echo "Looking for pio_usb.h in SDK..."
-            find . -name "pio_usb.h" -type f 2>/dev/null | head -10
-        fi
+        # 验证pio_usb.h已下载
+        echo "=== Verifying PIO-USB files ==="
+        find lib/tinyusb -name "pio_usb.h" -type f 2>/dev/null || echo "pio_usb.h not found!"
 
-    - name: Configure CMake (without external PIO-USB)
+    - name: Configure CMake
       run: |
         mkdir build
         cd build
-        echo "Configuring CMake without external PIO-USB"
-        echo "PICO_SDK_PATH=$PICO_SDK_PATH"
-        # 使用简化的CMake命令，不指定外部PIO-USB路径
         cmake -G Ninja \
           -DPICO_PLATFORM=rp2350 \
           -DPICO_BOARD=pico2 \
           -DPICO_SDK_PATH=$PICO_SDK_PATH \
           -DCMAKE_BUILD_TYPE=Release \
-          .. 2>&1 | tee cmake_output.log
-        echo "CMake configuration complete"
-        # 显示生成的包含路径
-        echo "=== Generated include paths ==="
-        cat cmake_output.log | grep -i "include" || true
+          ..
 
     - name: Build
       run: |

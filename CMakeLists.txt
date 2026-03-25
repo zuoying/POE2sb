@@ -3,17 +3,9 @@ cmake_minimum_required(VERSION 3.13)
 set(PICO_PLATFORM rp2350 CACHE STRING "Platform")
 set(PICO_BOARD pico2 CACHE STRING "Board")
 
-# 设置PIO-USB路径（兼容GitHub Actions）
-# 首先检查CMake变量，然后检查环境变量
-if(PICO_PIO_USB_PATH)
-    message(STATUS "Using PICO_PIO_USB_PATH from CMake variable: ${PICO_PIO_USB_PATH}")
-elseif(DEFINED ENV{PICO_PIO_USB_PATH})
-    set(PICO_PIO_USB_PATH $ENV{PICO_PIO_USB_PATH} CACHE PATH "Path to Pico-PIO-USB")
-    message(STATUS "Using PICO_PIO_USB_PATH from environment: ${PICO_PIO_USB_PATH}")
-else()
-    set(PICO_PIO_USB_PATH "" CACHE PATH "Path to Pico-PIO-USB")
-    message(STATUS "PICO_PIO_USB_PATH not set, will use TinyUSB built-in PIO-USB if available")
-endif()
+# 获取TinyUSB内置的PIO-USB路径（用于头文件包含）
+set(TINYUSB_PATH ${PICO_SDK_PATH}/lib/tinyusb)
+set(PIO_USB_PATH ${TINYUSB_PATH}/hw/mcu/raspberrypi)
 
 # 自动从GitHub获取SDK
 set(PICO_SDK_FETCH_FROM_GIT ON)
@@ -40,10 +32,7 @@ add_compile_definitions(
     USE_PIO_USB_DEVICE=1
     # 设置设备端为全速USB
     PIO_USB_DEVICE_SPEED=FULL_SPEED
-    # 确保TinyUSB能找到PIO-USB头文件
-    PICO_PIO_USB_ENABLE=1
-    # 强制使用Pico SDK内置的PIO-USB
-    PICO_PIO_USB_FORCE_INTERNAL=1
+
 )
 
 # 添加主程序目标（带USB功能）
@@ -62,24 +51,17 @@ target_include_directories(poe2gamepad PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/class/hid
     ${CMAKE_CURRENT_LIST_DIR}/class/xinput
+    ${PIO_USB_PATH}
 )
-
-# 如果设置了PICO_PIO_USB_PATH，添加包含路径（但我们现在主要使用SDK内置的）
-if(PICO_PIO_USB_PATH)
-    target_include_directories(poe2gamepad PRIVATE
-        ${PICO_PIO_USB_PATH}
-    )
-    message(STATUS "Added PICO_PIO_USB_PATH to include directories: ${PICO_PIO_USB_PATH}")
-endif()
 
 target_link_libraries(poe2gamepad
     pico_stdlib
     tinyusb_device
     tinyusb_host
+    tinyusb_pico_pio_usb
     pico_multicore
     hardware_pio
     hardware_gpio
-    pico_pio_usb  # 总是链接PIO-USB库
 )
 
 pico_enable_stdio_usb(poe2gamepad 0)
