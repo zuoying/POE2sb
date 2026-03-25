@@ -121,7 +121,7 @@ int main(void) {
     
     // 初始化硬件
     init_hardware();
-    led_blink(3, 200); // 启动闪烁
+    led_blink(255, 255, 255, 3, 200); // 白色启动闪烁
     
     // 设置系统时钟
     printf("Setting system clock to 120MHz\n");
@@ -186,11 +186,11 @@ int main(void) {
                 printf("GameSir gamepad connected! VID=0x%04X, PID=0x%04X\n", 
                        hid_host.vid, hid_host.pid);
                 gamepad_connected = true;
-                led_blink(1, 100); // 连接确认闪烁
+                led_blink(0, 255, 0, 1, 100); // 绿色连接确认闪烁
             } else {
                 printf("GameSir gamepad disconnected\n");
                 gamepad_connected = false;
-                led_blink(2, 100); // 断开确认闪烁
+                led_blink(255, 0, 0, 2, 100); // 红色断开确认闪烁
             }
             last_connected_state = current_connected_state;
         }

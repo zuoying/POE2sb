@@ -47,6 +47,9 @@ void mode_manager_process_report(const xinput_report_t* report,
 // 获取模式名称字符串
 const char* mode_manager_get_name(work_mode_t mode);
 
+// 获取反作弊延迟（毫秒）
+uint16_t mode_manager_get_anticheat_delay(void);
+
 #ifdef __cplusplus
 }
 #endif
