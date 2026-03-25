@@ -9,6 +9,7 @@
 #include "ws2812.pio.h"
 #include "class/xinput/xinput_host.h"
 #include "class/xinput/xinput_device.h"
+#include "usb_descriptors.h"
 
 // 硬件定义
 #define LED_PIN 16
@@ -269,7 +270,7 @@ int main(void) {
             last_usb_status = get_absolute_time();
             
             printf("=== USB Device Status ===\n");
-            printf("  tud_initialized(): %s\n", tud_initialized() ? "YES" : "NO");
+            printf("  tud_inited(): %s\n", tud_inited() ? "YES" : "NO");
             printf("  tud_mounted(): %s\n", tud_mounted() ? "YES" : "NO");
             printf("  tud_connected(): %s\n", tud_connected() ? "YES" : "NO");
             
