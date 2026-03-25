@@ -73,32 +73,18 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
     
     printf("HID device mounted: addr=%u, instance=%u\n", dev_addr, instance);
     
-    printf("HID device mounted: addr=%u, instance=%u\n", dev_addr, instance);
-    
     // 对于GameSir手柄，我们直接假设它是正确的设备
     // 因为VID/PID检查在TinyUSB的不同版本中API不一致
     // 我们将在报告解析阶段验证设备类型
-    hid_host.dev_addr = dev_addr;
-    hid_host.instance = instance;
-    hid_host.connected = true;
-    
-    // 设置默认VID/PID（GameSir T4 Kaleid）
-    hid_host.vid = 0x3537;
-    hid_host.pid = 0x100E;
-    
     printf("Assuming GameSir device: VID=0x3537, PID=0x100E\n");
-        printf("Not a gamepad device, skipping\n");
-        return;
-    }
-    
-    printf("Gamepad device detected!\n");
     
     // 记录HID手柄的设备地址和实例
     hid_host.dev_addr = dev_addr;
     hid_host.inst = instance;
     hid_host.connected = true;
-    hid_host.vid = vid;
-    hid_host.pid = pid;
+    hid_host.vid = 0x3537;  // GameSir VID
+    hid_host.pid = 0x100E;  // GameSir PID
+    
     _report_updated = false;
     memset(_last_report, 0, sizeof(_last_report));
     _last_report_len = 0;
@@ -110,7 +96,7 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
         return;
     }
     
-    printf("HID gamepad opened successfully\n");
+    printf("Gamepad device opened successfully\n");
 }
 
 // tinyUSB主机HID断开回调
