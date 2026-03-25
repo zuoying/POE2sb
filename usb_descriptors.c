@@ -90,7 +90,7 @@ uint8_t const desc_hid_report[] = {
 // HID配置描述符
 uint8_t const desc_configuration[] = {
     // 配置描述符 (9 bytes)
-    9, TUSB_DESC_CONFIGURATION,
+    9, 0x02,                      // 配置描述符类型 (0x02)
     34, 0,                        // 配置总长度 (little-endian: 34 = 0x22)
     0x01,                         // 接口数量
     0x01,                         // 配置值
@@ -99,7 +99,7 @@ uint8_t const desc_configuration[] = {
     0x32,                         // 最大电流 (100mA)
     
     // 接口描述符 (9 bytes)
-    9, TUSB_DESC_INTERFACE,
+    9, 0x04,                      // 接口描述符类型 (0x04)
     0x00,                         // 接口号
     0x00,                         // 备用设置
     0x01,                         // 端点数量
@@ -118,7 +118,7 @@ uint8_t const desc_configuration[] = {
     (uint8_t)((sizeof(desc_hid_report) >> 8) & 0xFF), // 描述符长度 (high byte)
     
     // 端点描述符 (7 bytes)
-    7, TUSB_DESC_ENDPOINT,
+    7, 0x05,                      // 端点描述符类型 (0x05)
     0x81,                         // 端点地址 (IN 1)
     0x03,                         // 属性 (中断)
     64, 0,                        // 最大包大小 (little-endian: 64 = 0x40)
