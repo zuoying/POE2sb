@@ -67,7 +67,7 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
   #ifdef TINYUSB_VERSION_MAJOR
     #if TINYUSB_VERSION_MAJOR >= 1
         tusb_desc_device_t dev_desc_buf;
-        if (tuh_descriptor_get_device(dev_addr, &dev_desc_buf, sizeof(dev_desc_buf), NULL)) {
+        if (tuh_descriptor_get_device(dev_addr, &dev_desc_buf, sizeof(dev_desc_buf), NULL, 0)) {
             vid = dev_desc_buf.idVendor;
             pid = dev_desc_buf.idProduct;
         }
