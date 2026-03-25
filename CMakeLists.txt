@@ -77,19 +77,8 @@ target_link_libraries(poe2gamepad
     pico_multicore
     hardware_pio
     hardware_gpio
+    pico_pio_usb  # 总是链接PIO-USB库
 )
-
-# 启用PIO-USB库链接，以支持USB-A端口的主机功能
-if(PICO_PIO_USB_PATH)
-    target_link_libraries(poe2gamepad
-        pico_pio_usb
-    )
-else()
-    # 如果没有设置PICO_PIO_USB_PATH，尝试使用TinyUSB内置的PIO-USB
-    target_link_libraries(poe2gamepad
-        pico_pio_usb
-    )
-endif()
 
 pico_enable_stdio_usb(poe2gamepad 0)
 pico_enable_stdio_uart(poe2gamepad 1)
