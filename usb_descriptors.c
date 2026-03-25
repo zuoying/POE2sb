@@ -89,12 +89,40 @@ uint8_t const desc_hid_report[] = {
 
 // HID配置描述符
 uint8_t const desc_configuration[] = {
-    // 配置描述符
-    TUD_CONFIG_DESC(1, 1, 0, sizeof(desc_configuration), 0x80, 100),
+    // 配置描述符 (9 bytes)
+    9, TUSB_DESC_CONFIGURATION,
+    34, 0,                        // 配置总长度 (little-endian: 34 = 0x22)
+    0x01,                         // 接口数量
+    0x01,                         // 配置值
+    0x00,                         // 字符串索引
+    0x80,                         // 供电模式 (总线供电)
+    0x32,                         // 最大电流 (100mA)
     
-    // HID接口描述符
-    TUD_HID_DESC(0, 4, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), 
-                 EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 1)
+    // 接口描述符 (9 bytes)
+    9, TUSB_DESC_INTERFACE,
+    0x00,                         // 接口号
+    0x00,                         // 备用设置
+    0x01,                         // 端点数量
+    0x03,                         // 接口类 (HID)
+    0x00,                         // 接口子类
+    0x00,                         // 接口协议
+    0x00,                         // 字符串索引
+    
+    // HID描述符 (9 bytes)
+    9, 0x21,                      // HID描述符类型 (0x21)
+    0x11, 0x01,                   // HID版本 (1.11)
+    0x00,                         // 国家代码
+    0x01,                         // 描述符数量
+    0x22,                         // 报告描述符类型 (0x22)
+    (uint8_t)(sizeof(desc_hid_report) & 0xFF),        // 描述符长度 (low byte)
+    (uint8_t)((sizeof(desc_hid_report) >> 8) & 0xFF), // 描述符长度 (high byte)
+    
+    // 端点描述符 (7 bytes)
+    7, TUSB_DESC_ENDPOINT,
+    0x81,                         // 端点地址 (IN 1)
+    0x03,                         // 属性 (中断)
+    64, 0,                        // 最大包大小 (little-endian: 64 = 0x40)
+    0x01                          // 轮询间隔 (1ms)
 };
 
 uint8_t const* tud_descriptor_device_cb(void) {
