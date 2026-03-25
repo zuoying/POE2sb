@@ -1,0 +1,23 @@
+# Build directories
+build/
+*.build/
+
+# Compiled files
+*.uf2
+*.bin
+*.hex
+*.elf
+*.map
+
+# IDE files
+.vscode/
+*.swp
+*~
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Dependency directories
+pico-sdk/
+tinyusb/
