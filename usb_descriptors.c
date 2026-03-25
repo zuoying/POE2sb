@@ -85,7 +85,7 @@ uint8_t const desc_hid_report[] = {
 uint8_t const desc_configuration[] = {
     // 配置描述符 (9 bytes)
     9, 0x02,                      // 配置描述符类型 (0x02)
-    68, 0,                        // 配置总长度 (little-endian: 68 = 0x44)
+    59, 0,                        // 配置总长度 (little-endian: 59 = 0x3B)
     0x02,                         // 接口数量 (2个接口)
     0x01,                         // 配置值
     0x00,                         // 字符串索引

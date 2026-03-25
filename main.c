@@ -61,6 +61,7 @@ void tud_mount_cb(void) {
     printf("USB Device: Mounted successfully!\n");
     printf("Device is now visible to PC as HID gamepad\n");
     printf("Device Info: VID=0x%04X, PID=0x%04X\n", GAMEPAD_VID, GAMEPAD_PID);
+    printf("Device will appear as XInput controller in Windows\n");
 }
 
 void tud_umount_cb(void) {
@@ -130,11 +131,7 @@ int main(void) {
     // 初始化模式管理器
     mode_manager_init();
     
-    // 启动Core1处理USB主机功能
-    printf("Starting Core1 USB host task\n");
-    multicore_launch_core1(core1_main);
-    
-    // 初始化USB设备（虚拟XInput）
+    // 初始化USB设备（虚拟XInput） - 先于Core1启动
     printf("Initializing USB device (Dual Virtual XInput)\n");
     printf("USB Device Parameters:\n");
     printf("  VID: 0x%04X, PID: 0x%04X\n", GAMEPAD_VID, GAMEPAD_PID);
@@ -154,10 +151,14 @@ int main(void) {
         printf("  HID device interfaces: %d (needs at least 1)\n", CFG_TUD_HID);
     #endif
     
-    // 初始化tinyusb设备栈
+    // 初始化tinyusb设备栈 - 必须在multicore_launch_core1之前
     printf("Calling tusb_init()...\n");
     tusb_init();
     printf("tusb_init() completed\n");
+    
+    // 启动Core1处理USB主机功能
+    printf("Starting Core1 USB host task\n");
+    multicore_launch_core1(core1_main);
     
     printf("System initialization complete\n");
     printf("Current mode: %s\n", mode_manager_get_name(current_mode));
