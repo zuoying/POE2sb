@@ -4,17 +4,17 @@
 tusb_desc_device_t const desc_device = {
     .bLength = sizeof(tusb_desc_device_t),
     .bDescriptorType = 0x01,           // 设备描述符类型 (0x01)
-    .bcdUSB = 0x0200,
-    .bDeviceClass = 0x00,        // 每个接口指定类
+    .bcdUSB = 0x0200,                  // USB 2.0
+    .bDeviceClass = 0x00,              // 每个接口指定类
     .bDeviceSubClass = 0x00,
     .bDeviceProtocol = 0x00,
     .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
-    .idVendor = GAMEPAD_VID,
-    .idProduct = GAMEPAD_PID,
-    .bcdDevice = 0x0100,
-    .iManufacturer = 0x01,
-    .iProduct = 0x02,
-    .iSerialNumber = 0x03,
+    .idVendor = GAMEPAD_VID,           // 0x1209
+    .idProduct = GAMEPAD_PID,          // 0x0001
+    .bcdDevice = 0x0100,               // Device version 1.0
+    .iManufacturer = 0x01,             // String index 1
+    .iProduct = 0x02,                  // String index 2
+    .iSerialNumber = 0x03,             // String index 3
     .bNumConfigurations = 0x01
 };
 

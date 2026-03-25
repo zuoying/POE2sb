@@ -28,13 +28,18 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
 # 微雪RP2350-USB-A特定的引脚配置
-# USB-A端口使用GPIO12 (D+) 和 GPIO13 (D-)
+# USB-A端口（主机模式）使用GPIO12 (D+) 和 GPIO13 (D-)
+# USB-C端口（设备模式）使用GPIO2 (D+) 和 GPIO3 (D-)
 add_compile_definitions(
     PICO_RP2350=1
     PIO_USB_HOST_D_PLUS_PIN=12
     PIO_USB_HOST_D_MINUS_PIN=13
     PIO_USB_DEVICE_D_PLUS_PIN=2
     PIO_USB_DEVICE_D_MINUS_PIN=3
+    # 启用PIO-USB设备端支持
+    USE_PIO_USB_DEVICE=1
+    # 设置设备端为全速USB
+    PIO_USB_DEVICE_SPEED=FULL_SPEED
 )
 
 # 添加主程序目标（带USB功能）
@@ -68,13 +73,17 @@ target_link_libraries(poe2gamepad
     hardware_gpio
 )
 
-# 注释掉PIO-USB库链接，因为我们已经禁用了PIO-USB功能
-# 如果需要重新启用PIO-USB，请取消注释并确保PICO_PIO_USB_PATH正确设置
-#if(PICO_PIO_USB_PATH)
-#    target_link_libraries(poe2gamepad
-#        pico_pio_usb
-#    )
-#endif()
+# 启用PIO-USB库链接，以支持USB-A端口的主机功能
+if(PICO_PIO_USB_PATH)
+    target_link_libraries(poe2gamepad
+        pico_pio_usb
+    )
+else()
+    # 如果没有设置PICO_PIO_USB_PATH，尝试使用TinyUSB内置的PIO-USB
+    target_link_libraries(poe2gamepad
+        pico_pio_usb
+    )
+endif()
 
 pico_enable_stdio_usb(poe2gamepad 0)
 pico_enable_stdio_uart(poe2gamepad 1)

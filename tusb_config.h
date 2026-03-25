@@ -26,7 +26,7 @@
 #define CFG_TUH_ENABLED           1
 #define CFG_TUH_HID               1  // 支持HID设备
 #define CFG_TUH_HUB               1  // 支持USB Hub
-#define CFG_TUH_RPI_PIO_USB       0  // 禁用PIO-USB（暂时解决编译问题）
+#define CFG_TUH_RPI_PIO_USB       1  // 启用PIO-USB以支持USB-A端口
 #define CFG_TUH_MAX_DEVICE        2  // 最多支持2个设备
 #define CFG_TUH_ENUMERATION_BUFSIZE 256
 

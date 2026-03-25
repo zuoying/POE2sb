@@ -12,7 +12,7 @@ extern "C" {
 typedef struct xinput_report xinput_state_t;
 
 // XInput手柄报告（状态）结构体（微软标准格式）
-struct xinput_report {
+struct __attribute__((packed)) xinput_report {
   uint8_t  report_id;       // 报告ID（固定为0x00）
   uint16_t buttons;         // 按键状态（位掩码）
   int8_t   left_trigger;    // 左扳机（0~255）

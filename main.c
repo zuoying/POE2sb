@@ -129,6 +129,17 @@ void tuh_umount_cb(uint8_t dev_addr) {
     led_blink(2, 100);
 }
 
+// USB设备挂载回调函数
+void tud_mount_cb(void) {
+    printf("USB Device: Mounted successfully!\n");
+    printf("Device is now visible to PC as HID gamepad\n");
+    printf("Device Info: VID=0x%04X, PID=0x%04X\n", GAMEPAD_VID, GAMEPAD_PID);
+}
+
+void tud_umount_cb(void) {
+    printf("USB Device: Unmounted\n");
+}
+
 // HID报告接收回调 - 已在xinput_host.c中定义
 // 注释掉以避免重复定义错误
 /*
@@ -214,7 +225,35 @@ int main(void) {
     
     // 初始化USB设备
     printf("Initializing USB device (Virtual XInput)\n");
+    printf("USB Device Parameters:\n");
+    printf("  VID: 0x1209, PID: 0x0001\n");
+    printf("  Product: Xbox 360 Controller\n");
+    printf("  String descriptors loaded\n");
+    
+    // 检查tinyusb配置
+    #if CFG_TUD_ENABLED
+        printf("  TinyUSB Device stack: ENABLED\n");
+    #else
+        printf("  TinyUSB Device stack: DISABLED (this is wrong!)\n");
+    #endif
+    
+    #if CFG_TUD_HID >= 2
+        printf("  HID device interfaces: %d (OK for dual virtual controllers)\n", CFG_TUD_HID);
+    #else
+        printf("  HID device interfaces: %d (needs at least 1)\n", CFG_TUD_HID);
+    #endif
+    
+    // 初始化tinyusb设备栈
+    printf("Calling tusb_init()...\n");
     tusb_init();
+    printf("tusb_init() completed\n");
+    
+    // 添加USB设备挂载回调
+    printf("Setting up USB device callbacks...\n");
+    printf("  Device descriptor callback: %p\n", tud_descriptor_device_cb);
+    printf("  Configuration descriptor callback: %p\n", tud_descriptor_configuration_cb);
+    printf("  String descriptor callback: %p\n", tud_descriptor_string_cb);
+    printf("  HID report descriptor callback: %p\n", tud_hid_descriptor_report_cb);
     
     printf("System initialization complete\n");
     printf("Waiting for gamepad connection...\n");
@@ -223,6 +262,30 @@ int main(void) {
     // 主循环
     while (1) {
         tud_task();
+        
+        // 定期打印USB设备状态
+        static absolute_time_t last_usb_status = {0};
+        if (absolute_time_diff_us(last_usb_status, get_absolute_time()) > 5000000) { // 每5秒
+            last_usb_status = get_absolute_time();
+            
+            printf("=== USB Device Status ===\n");
+            printf("  tud_initialized(): %s\n", tud_initialized() ? "YES" : "NO");
+            printf("  tud_mounted(): %s\n", tud_mounted() ? "YES" : "NO");
+            printf("  tud_connected(): %s\n", tud_connected() ? "YES" : "NO");
+            
+            // 检查更详细的状态
+            #if CFG_TUD_ENABLED
+                printf("  CFG_TUD_ENABLED: 1 (device stack enabled)\n");
+            #else
+                printf("  CFG_TUD_ENABLED: 0 (device stack disabled)\n");
+            #endif
+            
+            #if CFG_TUD_HID
+                printf("  CFG_TUD_HID: %d (HID interfaces)\n", CFG_TUD_HID);
+            #endif
+            
+            printf("===========================\n");
+        }
         
         // 检查XInput手柄连接状态
         static bool last_gamepad_state = false;
