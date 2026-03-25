@@ -3,8 +3,16 @@
 
 #include "tusb.h"
 
-#define GAMEPAD_VID 0x1234  // Generic VID for testing
-#define GAMEPAD_PID 0x5678  // Generic PID for testing
+// 使用Xbox 360兼容的VID/PID（Windows会自动识别为XInput设备）
+#define GAMEPAD_VID 0x045E  // Microsoft
+#define GAMEPAD_PID 0x028E  // Xbox 360 Controller
+
+// HID端点号
+#define EPNUM_HID   0x01
+
+// 外部引用的HID报告描述符
+extern uint8_t const desc_hid_report[];
+extern uint16_t const desc_hid_report_len;
 
 typedef struct {
     uint8_t report_id;

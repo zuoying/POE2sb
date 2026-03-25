@@ -40,6 +40,7 @@ add_compile_definitions(
 # 添加主程序目标（带USB功能）
 add_executable(poe2gamepad
     main.c
+    usb_descriptors.c
     ws2812.pio.h
     class/xinput/xinput_host.c
     class/xinput/xinput_device.c
