@@ -224,6 +224,17 @@ int main(void) {
     while (1) {
         tud_task();
         
+        // 定期打印USB设备状态
+        static absolute_time_t last_usb_status = {0};
+        if (absolute_time_diff_us(last_usb_status, get_absolute_time()) > 5000000) { // 每5秒
+            last_usb_status = get_absolute_time();
+            if (tud_mounted()) {
+                printf("USB Device: Mounted\n");
+            } else {
+                printf("USB Device: Not mounted\n");
+            }
+        }
+        
         // 检查XInput手柄连接状态
         static bool last_gamepad_state = false;
         bool current_gamepad_state = xinput_host.connected;
