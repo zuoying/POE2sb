@@ -24,9 +24,11 @@ pico_sdk_init()
 # 硬件USB控制器用于设备模式
 add_compile_definitions(
     PICO_RP2040=1
-    PIO_USB_HOST_D_PLUS_PIN=26
-    PIO_USB_HOST_D_MINUS_PIN=27
     CFG_TUH_RPI_PIO_USB=1
+    PIO_USB_HOST_PIN_DM=27
+    PIO_USB_HOST_PIN_DP=26
+    PIO_USB_HOST_PIO_INST=0
+    PIO_USB_HOST_SM=0
     # 设备端使用硬件USB控制器，无PIO-USB设备端定义
 )
 
@@ -52,8 +54,9 @@ target_include_directories(poe2gamepad PRIVATE
 target_link_libraries(poe2gamepad
     pico_stdlib
     tinyusb_device
+    tinyusb_pico_pio_usb
     tinyusb_host
-    pio_usb
+    tinyusb_board
     pico_multicore
     hardware_pio
     hardware_gpio
