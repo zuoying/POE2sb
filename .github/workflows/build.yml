@@ -41,6 +41,11 @@ jobs:
           -DPICO_BOARD=adafruit_feather_rp2040 \
           -DPICO_SDK_PATH=$PICO_SDK_PATH \
           -DCMAKE_BUILD_TYPE=Release \
+          -DCFG_TUH_RPI_PIO_USB=1 \
+          -DPIO_USB_HOST_PIN_DM=27 \
+          -DPIO_USB_HOST_PIN_DP=26 \
+          -DPIO_USB_HOST_PIO_INST=0 \
+          -DPIO_USB_HOST_SM=0 \
           ..
 
     - name: Build

@@ -5,7 +5,7 @@ set(PICO_BOARD adafruit_feather_rp2040 CACHE STRING "Board")
 
 # 获取TinyUSB内置的PIO-USB路径（用于头文件包含）
 set(TINYUSB_PATH ${PICO_SDK_PATH}/lib/tinyusb)
-set(PIO_USB_PATH ${TINYUSB_PATH}/hw/mcu/raspberrypi)
+set(PIO_USB_PATH ${TINYUSB_PATH}/hw/mcu/raspberrypi/pio_usb)
 
 # 自动从GitHub获取SDK
 set(PICO_SDK_FETCH_FROM_GIT ON)
