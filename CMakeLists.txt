@@ -26,6 +26,7 @@ add_compile_definitions(
     PICO_RP2040=1
     PIO_USB_HOST_D_PLUS_PIN=26
     PIO_USB_HOST_D_MINUS_PIN=27
+    CFG_TUH_RPI_PIO_USB=1
     # 设备端使用硬件USB控制器，无PIO-USB设备端定义
 )
 
