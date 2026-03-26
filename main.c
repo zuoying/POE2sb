@@ -151,10 +151,10 @@ int main(void) {
         printf("  HID device interfaces: %d (needs at least 1)\n", CFG_TUD_HID);
     #endif
     
-    // 初始化tinyusb设备栈 - 必须在multicore_launch_core1之前
-    printf("Calling tusb_init()...\n");
-    tusb_init();
-    printf("tusb_init() completed\n");
+    // 初始化tinyusb设备栈 - 只初始化设备端（硬件USB）
+    printf("Initializing USB device stack (tud_init)...\n");
+    tud_init(0);  // 只初始化设备端，避免与Core1的主机端冲突
+    printf("USB device stack initialized\n");
     
     // 启动Core1处理USB主机功能
     printf("Starting Core1 USB host task\n");
