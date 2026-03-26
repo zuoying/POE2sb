@@ -27,7 +27,7 @@ jobs:
 
     - name: Set up Pico SDK
       run: |
-        git clone --depth 1 --branch 2.0.0 https://github.com/raspberrypi/pico-sdk.git
+        git clone --depth 1 --branch 1.5.1 https://github.com/raspberrypi/pico-sdk.git
         cd pico-sdk
         git submodule update --init --recursive
         # 下载TinyUSB的PIO-USB依赖（pio_usb.h等）
