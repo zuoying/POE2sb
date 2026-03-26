@@ -53,6 +53,7 @@ target_link_libraries(poe2gamepad
     pico_stdlib
     tinyusb_device
     tinyusb_host
+    pico_pio_usb
     pico_multicore
     hardware_pio
     hardware_gpio
