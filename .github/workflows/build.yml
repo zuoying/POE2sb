@@ -27,7 +27,7 @@ jobs:
 
     - name: Set up Pico SDK
       run: |
-        git clone --depth 1 --branch 2.1.0 https://github.com/raspberrypi/pico-sdk.git
+        git clone --depth 1 --branch 2.0.0 https://github.com/raspberrypi/pico-sdk.git
         cd pico-sdk
         git submodule update --init --recursive
         # 下载TinyUSB的PIO-USB依赖（pio_usb.h等）
@@ -44,8 +44,8 @@ jobs:
         mkdir build
         cd build
         cmake -G Ninja \
-          -DPICO_PLATFORM=rp2350 \
-          -DPICO_BOARD=pico2 \
+          -DPICO_PLATFORM=rp2040 \
+          -DPICO_BOARD=adafruit_feather_rp2040 \
           -DPICO_SDK_PATH=$PICO_SDK_PATH \
           -DCMAKE_BUILD_TYPE=Release \
           ..
