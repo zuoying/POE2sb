@@ -27,17 +27,10 @@ jobs:
 
     - name: Set up Pico SDK
       run: |
-        git clone --depth 1 --branch 1.5.1 https://github.com/raspberrypi/pico-sdk.git
+        git clone --depth 1 --branch 2.0.0 https://github.com/raspberrypi/pico-sdk.git
         cd pico-sdk
         git submodule update --init --recursive
-        # 下载TinyUSB的PIO-USB依赖（pio_usb.h等）
-        cd lib/tinyusb
-        python3 tools/get_deps.py rp2040
-        cd ../../..
         echo "PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk" >> $GITHUB_ENV
-        # 验证pio_usb.h已下载
-        echo "=== Verifying PIO-USB files ==="
-        find lib/tinyusb -name "pio_usb.h" -type f 2>/dev/null || echo "pio_usb.h not found!"
 
     - name: Configure CMake
       run: |
