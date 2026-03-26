@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
-set(PICO_PLATFORM rp2350 CACHE STRING "Platform")
-set(PICO_BOARD pico2 CACHE STRING "Board")
+set(PICO_PLATFORM rp2040 CACHE STRING "Platform")
+set(PICO_BOARD adafruit_feather_rp2040 CACHE STRING "Board")
 
 # 获取TinyUSB内置的PIO-USB路径（用于头文件包含）
 set(TINYUSB_PATH ${PICO_SDK_PATH}/lib/tinyusb)
@@ -19,14 +19,14 @@ set(CMAKE_CXX_STANDARD 17)
 
 pico_sdk_init()
 
-# 微雪RP2350-USB-A特定的引脚配置
-# USB-A端口（主机模式）使用GPIO12 (D+) 和 GPIO13 (D-) - PIO-USB
-# USB-C端口（设备模式）使用硬件USB控制器 (GPIO0/GPIO1)
+# Adafruit Feather RP2040 with USB Type A Host特定的引脚配置
+# USB Type A Host端口（主机模式）使用GPIO26 (D+) 和 GPIO27 (D-) - PIO-USB
+# 硬件USB控制器用于设备模式
 add_compile_definitions(
-    PICO_RP2350=1
-    PIO_USB_HOST_D_PLUS_PIN=12
-    PIO_USB_HOST_D_MINUS_PIN=13
-    # 删除PIO_USB_DEVICE_*定义，设备端使用硬件USB
+    PICO_RP2040=1
+    PIO_USB_HOST_D_PLUS_PIN=26
+    PIO_USB_HOST_D_MINUS_PIN=27
+    # 设备端使用硬件USB控制器，无PIO-USB设备端定义
 )
 
 # 添加主程序目标（带USB功能）

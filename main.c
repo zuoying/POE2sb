@@ -12,8 +12,10 @@
 #include "led_manager.h"
 #include "mode_manager.h"
 
-// 硬件引脚定义
-#define POWER_PIN 18
+// 硬件引脚定义 - Adafruit Feather RP2040 with USB Type A Host
+#define POWER_PIN 23          // 电源控制引脚 (GPIO23)
+#define POWER_STATUS_PIN 24   // 电源状态检测引脚 (GPIO24)
+#define BUILTIN_LED_PIN 25    // 板载LED引脚 (GPIO25)
 
 // 全局状态
 static volatile bool gamepad_connected = false;
@@ -22,10 +24,12 @@ static volatile bool gamepad_connected = false;
 void print_system_info(void) {
     printf("=== System Information ===\n");
     printf("Project: POE2sb Gamepad Synchronizer\n");
-    printf("Board: Waveshare RP2350-USB-A\n");
-    printf("PIO-USB Host Pins: D+ GPIO12, D- GPIO13\n");
+    printf("Board: Adafruit Feather RP2040 with USB Type A Host\n");
+    printf("PIO-USB Host Pins: D+ GPIO26, D- GPIO27\n");
     printf("LED Pin: GPIO16\n");
-    printf("Power Control Pin: GPIO18\n");
+    printf("Power Control Pin: GPIO23\n");
+    printf("Power Status Pin: GPIO24\n");
+    printf("Builtin LED Pin: GPIO25\n");
     printf("System Clock: %lu Hz\n", clock_get_hz(clk_sys));
     printf("===========================\n");
 }
@@ -39,7 +43,7 @@ void init_hardware(void) {
     led_set_state(LED_STATE_INIT);
     
     // 初始化5V电源控制
-    printf("Initializing power control on GPIO18\n");
+    printf("Initializing power control on GPIO23\n");
     gpio_init(POWER_PIN);
     gpio_set_dir(POWER_PIN, GPIO_OUT);
     // 使用正确的驱动强度常量（根据Pico SDK版本）
@@ -52,6 +56,18 @@ void init_hardware(void) {
         gpio_set_drive_strength(POWER_PIN, GPIO_DRIVE_STRENGTH_8MA);
     #endif
     gpio_put(POWER_PIN, 0); // 先关闭电源
+    
+    // 初始化电源状态检测引脚 (GPIO24)
+    printf("Initializing power status detection on GPIO24\n");
+    gpio_init(POWER_STATUS_PIN);
+    gpio_set_dir(POWER_STATUS_PIN, GPIO_IN);
+    gpio_pull_down(POWER_STATUS_PIN); // 使用下拉电阻
+    
+    // 初始化板载LED引脚 (GPIO25)
+    printf("Initializing builtin LED on GPIO25\n");
+    gpio_init(BUILTIN_LED_PIN);
+    gpio_set_dir(BUILTIN_LED_PIN, GPIO_OUT);
+    gpio_put(BUILTIN_LED_PIN, 0); // 初始关闭
     
     printf("Hardware initialized\n");
 }
@@ -76,7 +92,7 @@ void core1_main() {
     hid_host_init();
     
     // 开启手柄电源
-    printf("Core1: Enabling gamepad power\n");
+    printf("Core1: Enabling gamepad power on GPIO23\n");
     gpio_put(POWER_PIN, 1);
     sleep_ms(500); // 等待电源稳定
     
@@ -87,7 +103,7 @@ void core1_main() {
         // 处理USB主机事件
         hid_host_task();
         
-        // 定期检查电源状态
+        // 定期检查电源状态和控制板载LED
         static absolute_time_t last_power_check = {0};
         static bool power_check_initialized = false;
         
@@ -97,7 +113,31 @@ void core1_main() {
         }
         
         if (absolute_time_diff_us(get_absolute_time(), last_power_check) > 100000) {
-            gpio_put(POWER_PIN, 1); // 确保电源开启
+            // 确保电源开启
+            gpio_put(POWER_PIN, 1);
+            
+            // 检查电源状态引脚 (GPIO24)
+            bool power_ok = gpio_get(POWER_STATUS_PIN);
+            
+            // 根据电源状态控制板载LED (GPIO25)
+            gpio_put(BUILTIN_LED_PIN, power_ok ? 1 : 0);
+            
+            // 记录电源状态（仅状态变化时打印）
+            static bool last_power_ok = false;
+            if (power_ok != last_power_ok) {
+                printf("Core1: Power status changed to %s\n", power_ok ? "OK" : "FAIL");
+                last_power_ok = power_ok;
+                
+                // 如果电源异常，尝试重置
+                if (!power_ok) {
+                    printf("Core1: Power failure detected, attempting reset...\n");
+                    gpio_put(POWER_PIN, 0);
+                    sleep_ms(100);
+                    gpio_put(POWER_PIN, 1);
+                    sleep_ms(200);
+                }
+            }
+            
             last_power_check = get_absolute_time();
         }
         

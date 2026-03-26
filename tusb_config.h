@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-// 强制指定MCU类型为RP2350（如果尚未定义）
+// 强制指定MCU类型为RP2040（如果尚未定义）
 #ifndef CFG_TUSB_MCU
-#define CFG_TUSB_MCU 111  // RP2350
+#define CFG_TUSB_MCU 11  // RP2040
 #endif
 
 // 注释掉端点数量定义，使用Pico SDK默认值
@@ -31,6 +31,6 @@
 #define CFG_TUH_ENUMERATION_BUFSIZE 256
 
 // PIO-USB配置 - 只用于主机端
-#define BOARD_TUH_RHPORT          0  // RP2350 PIO-USB使用端口0
+#define BOARD_TUH_RHPORT          0  // RP2040 PIO-USB使用端口0
 
 #endif
