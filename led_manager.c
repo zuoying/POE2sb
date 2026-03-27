@@ -17,8 +17,8 @@ static led_state_t _current_state = LED_STATE_INIT;
 void led_init(void) {
     printf("Initializing WS2812 LED on GPIO%d\n", LED_PIN);
     
-    // 设置PIO
-    _pio = pio0;
+    // 设置PIO - 改用PIO1避免与PIO-USB主机冲突
+    _pio = pio1;  // RP2040有PIO0和PIO1两个实例
     _sm = pio_claim_unused_sm(_pio, true);
     _offset = pio_add_program(_pio, &ws2812_program);
     
@@ -27,7 +27,7 @@ void led_init(void) {
     
     // 设置初始状态
     led_set_state(LED_STATE_INIT);
-    printf("LED initialized\n");
+    printf("LED initialized on PIO1\n");
 }
 
 // 设置LED颜色和亮度
