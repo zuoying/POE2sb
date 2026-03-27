@@ -42,33 +42,44 @@ void print_system_info(void) {
     printf("===========================\n");
 }
 
-// 优化电源管理：根据手册控制TPS61023升压转换器
+// 优化电源管理：根据TPS61023规格控制升压转换器
 static void optimize_power_management(void) {
     printf("Optimizing TPS61023 power management (1A boost converter)...\n");
+    printf("  TPS61023 Specs: 0.5-5.5V input, 5.2V output, 1A max, 1MHz switching\n");
     
-    // 确保电源干净关闭
+    // 根据数据手册：使能引脚拉低可禁用输出（真断接功能）
+    // 1. 确保电源干净关闭
+    printf("  1. Ensuring clean shutdown (EN pin LOW)\n");
     gpio_put(USB_HOST_POWER_PIN, 0);
-    sleep_ms(200);
+    sleep_ms(100);  // 确保完全关断
     
-    // 高级软启动序列 - 避免电流冲击
-    printf("  Advanced soft-start sequence for TPS61023:\n");
-    for (int i = 0; i < 10; i++) {
-        // PWM式软启动：逐渐增加占空比
-        gpio_put(USB_HOST_POWER_PIN, 1);
-        sleep_ms(5 + i * 2);  // 逐渐增加开启时间
-        gpio_put(USB_HOST_POWER_PIN, 0);
-        sleep_ms(10 - i);     // 逐渐减少关闭时间
-        
-        if (i % 2 == 0) {
-            printf("    Step %d/10\n", i + 1);
-        }
-    }
+    // 2. 设置GPIO属性
+    #ifdef GPIO_SLEW_RATE_LIMIT
+        gpio_set_slew_rate(USB_HOST_POWER_PIN, GPIO_SLEW_RATE_LIMIT);
+    #endif
     
-    // 最终开启电源
+    #ifdef GPIO_INPUT_ENABLE
+        gpio_disable_input(USB_HOST_POWER_PIN);
+    #endif
+    
+    // 3. 根据Adafruit产品页面：需要适当延迟确保稳定
+    printf("  2. Waiting for caps to discharge\n");
+    sleep_ms(50);
+    
+    // 4. 优化启动序列 - 避免浪涌电流
+    printf("  3. Optimized startup sequence:\n");
+    
+    // 方法A：直接开启（TPS61023内置软启动）
+    printf("    Method A: Direct enable (TPS61023 has internal soft-start)\n");
     gpio_put(USB_HOST_POWER_PIN, 1);
-    sleep_ms(300); // 等待升压转换器完全稳定
     
-    printf("  TPS61023 fully enabled, 5V output should be stable\n");
+    // 5. 等待TPS61023完全启动
+    // 根据规格：启动时间依赖于输入电压，但通常很快
+    printf("  4. Waiting for TPS61023 to stabilize\n");
+    sleep_ms(150);  // 保守估计，给升压转换器足够时间
+    
+    printf("  TPS61023 enabled, 5.2V output should be available\n");
+    printf("  Note: 1A peak output for USB peripherals\n");
 }
 
 // 检查5V电源状态
@@ -128,20 +139,35 @@ void init_hardware(void) {
            power_ok ? "fully enabled" : "may need reset");
     printf("    Note: Power management allows hard-reset via GPIO18 control\n");
     
-    // 5V电源状态检测引脚 (GPIO6) - 用于检测5V电源状态
-    // 根据手册：5V LED位于USB-A端口后面，应该由电源管理电路控制
-    printf("  5V Power status detection: GPIO6\n");
-    printf("  Note: This pin likely reads 5V power status, not directly controls LED\n");
+    // GPIO6功能验证 - 根据描述"开发板绿灯常亮"，这可能不是电源状态引脚
+    // 尝试不同的配置来诊断GPIO6的实际功能
+    printf("  GPIO6 function testing...\n");
     
-    // 安全初始化：先设置为输入模式，上拉电阻
+    // 测试1：作为输入读取当前状态
     gpio_init(POWER_STATUS_PIN);
     gpio_set_dir(POWER_STATUS_PIN, GPIO_IN);
     gpio_pull_up(POWER_STATUS_PIN);
-    
-    // 短暂延迟后读取状态
     sleep_ms(10);
-    bool power_status = gpio_get(POWER_STATUS_PIN);
-    printf("  Current 5V power status: %s\n", power_status ? "HIGH (OK)" : "LOW (FAIL)");
+    bool status_as_input = gpio_get(POWER_STATUS_PIN);
+    printf("    As input (pull-up): %s\n", status_as_input ? "HIGH" : "LOW");
+    
+    // 测试2：作为输出尝试控制
+    gpio_set_dir(POWER_STATUS_PIN, GPIO_OUT);
+    gpio_put(POWER_STATUS_PIN, 0);
+    sleep_ms(10);
+    printf("    As output (LOW): set\n");
+    
+    sleep_ms(50);
+    gpio_put(POWER_STATUS_PIN, 1);
+    sleep_ms(10);
+    printf("    As output (HIGH): set\n");
+    
+    // 最终配置：根据实际需求选择
+    // 暂时保持为输入模式，上拉，用于后续诊断
+    gpio_set_dir(POWER_STATUS_PIN, GPIO_IN);
+    gpio_pull_up(POWER_STATUS_PIN);
+    
+    printf("  GPIO6 configured as input with pull-up for diagnostics\n");
     
     // 初始化板载LED引脚 (GPIO25) - 用于指示电源状态
     printf("Initializing builtin LED on GPIO25 (power indicator)\n");
@@ -177,18 +203,22 @@ void tud_umount_cb(void) {
 // Core1: USB主机任务
 void core1_main() {
     printf("Core1: Starting USB host initialization\n");
+    printf("Core1: PIO-USB Host pins: D+ GPIO%d, D- GPIO%d\n", 
+           USB_HOST_DP_PIN, USB_HOST_DM_PIN);
     
     // 等待USB设备栈完全初始化
     printf("Core1: Waiting for USB device stack to stabilize...\n");
-    sleep_ms(1000);
+    sleep_ms(1500);
     
     // 初始化HID主机模块
     printf("Core1: Initializing HID host module...\n");
+    printf("Core1: This will initialize PIO-USB host controller\n");
     hid_host_init();
     
     // 等待PIO-USB硬件完全启动
     printf("Core1: Waiting for PIO-USB hardware to initialize...\n");
-    sleep_ms(1000);
+    printf("Core1: This may take a moment for USB host enumeration\n");
+    sleep_ms(2000);
     
     // 开启手柄电源（已经在init_hardware中开启，这里确保保持开启）
     printf("Core1: Ensuring USB host 5V power is enabled on GPIO18\n");
@@ -211,35 +241,27 @@ void core1_main() {
             power_check_initialized = true;
         }
         
-        if (absolute_time_diff_us(get_absolute_time(), last_power_check) > 100000) {
+        if (absolute_time_diff_us(get_absolute_time(), last_power_check) > 1000000) { // 每1秒
             // 确保USB主机5V电源开启
             gpio_put(USB_HOST_POWER_PIN, 1);
             
-            // 读取5V电源状态 (GPIO6) - 根据手册，这是状态检测引脚
-            bool power_ok = gpio_get(POWER_STATUS_PIN);
+            // 简单的状态报告
+            static uint8_t heartbeat = 0;
+            heartbeat++;
             
-            // 控制板载LED (GPIO25) 作为系统运行指示灯
-            static bool led_state = false;
-            led_state = !led_state;
-            gpio_put(BUILTIN_LED_PIN, led_state);
-            
-            // 定期打印电源状态
-            static uint8_t status_counter = 0;
-            status_counter++;
-            if (status_counter >= 10) { // 每1秒打印一次
-                printf("Core1: USB Host 5V power: ON, Status: %s\n", 
-                       power_ok ? "OK (HIGH)" : "FAIL (LOW)");
-                status_counter = 0;
-                
-                // 如果电源状态异常，尝试重置TPS61023
-                if (!power_ok) {
-                    printf("Core1: 5V power failure detected, resetting TPS61023...\n");
-                    gpio_put(USB_HOST_POWER_PIN, 0);
-                    sleep_ms(100);
-                    gpio_put(USB_HOST_POWER_PIN, 1);
-                    sleep_ms(200);
-                }
+            if (heartbeat >= 30) { // 每30秒详细报告一次
+                printf("Core1: USB Host Status Report\n");
+                printf("  TPS61023 enabled: GPIO18 HIGH\n");
+                printf("  Board LED: GPIO25 %s\n", gpio_get(BUILTIN_LED_PIN) ? "ON" : "OFF");
+                printf("  GPIO6 state: %s\n", gpio_get(POWER_STATUS_PIN) ? "HIGH" : "LOW");
+                printf("  System running for: %lu ms\n", to_ms_since_boot(get_absolute_time()));
+                heartbeat = 0;
             }
+            
+            // 简单的心跳指示
+            static bool led_toggle = false;
+            led_toggle = !led_toggle;
+            gpio_put(BUILTIN_LED_PIN, led_toggle);
             
             last_power_check = get_absolute_time();
         }
@@ -267,15 +289,29 @@ int main(void) {
     init_hardware();
     led_blink(255, 255, 255, 3, 200); // 白色启动闪烁
     
+    // 运行系统诊断
+    printf("\n=== Running System Diagnostics ===\n");
+    
+    // 测试GPIO状态
+    printf("GPIO Status:\n");
+    printf("  GPIO18 (TPS61023 EN): %s\n", gpio_get(USB_HOST_POWER_PIN) ? "HIGH" : "LOW");
+    printf("  GPIO6 (POWER STATUS): %s\n", gpio_get(POWER_STATUS_PIN) ? "HIGH" : "LOW");
+    printf("  GPIO25 (Board LED): %s\n", gpio_get(BUILTIN_LED_PIN) ? "HIGH" : "LOW");
+    
+    // 测试电源管理
+    printf("Power Management Status:\n");
+    printf("  TPS61023 should be providing 5.2V output\n");
+    printf("  Max current: 1A peak (depends on input voltage)\n");
+    
     // 设置系统时钟
-    printf("Setting system clock to 120MHz\n");
+    printf("\nSetting system clock to 120MHz\n");
     set_sys_clock_khz(120000, true);
     
     // 初始化模式管理器
     mode_manager_init();
     
     // 初始化USB设备（虚拟XInput） - 先于Core1启动
-    printf("Initializing USB device (Dual Virtual XInput)\n");
+    printf("\nInitializing USB device (Dual Virtual XInput)\n");
     printf("USB Device Parameters:\n");
     printf("  VID: 0x%04X, PID: 0x%04X\n", GAMEPAD_VID, GAMEPAD_PID);
     printf("  Interfaces: 2 (Dual XInput Controllers)\n");
@@ -283,6 +319,13 @@ int main(void) {
     printf("  Product: GameSir T4 Kaleid Controller\n");
     printf("  Serial: SN240327001\n");
     printf("  String descriptors loaded\n");
+    
+    // 检查PIO-USB主机配置
+    printf("\nPIO-USB Host Configuration:\n");
+    printf("  D+ pin: GPIO%d\n", USB_HOST_DP_PIN);
+    printf("  D- pin: GPIO%d\n", USB_HOST_DM_PIN);
+    printf("  5V power control: GPIO%d (TPS61023 EN)\n", USB_HOST_POWER_PIN);
+    printf("  PIO instance: 0, State machine: 0\n");
     
     // 检查tinyusb配置
     #if CFG_TUD_ENABLED
