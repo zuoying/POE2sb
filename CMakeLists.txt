@@ -9,7 +9,7 @@ set(PIO_USB_PATH ${TINYUSB_PATH}/hw/mcu/raspberrypi/pio_usb)
 
 # 自动从GitHub获取SDK
 set(PICO_SDK_FETCH_FROM_GIT ON)
-set(PICO_SDK_FETCH_FROM_GIT_TAG "2.0.0")
+set(PICO_SDK_FETCH_FROM_GIT_TAG "2.2.0")
 
 include(pico_sdk_import.cmake)
 

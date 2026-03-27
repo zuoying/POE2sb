@@ -81,7 +81,7 @@ git push origin main
 每次向main分支推送代码时，GitHub Actions会自动：
 1. 拉取最新代码和子模块
 2. 安装ARM GCC交叉编译工具链
-3. 下载并设置Pico SDK 2.0.0
+3. 下载并设置Pico SDK 2.2.0
 4. 配置CMake构建系统
 5. 编译固件
 6. 生成可下载的UF2固件文件
