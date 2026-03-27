@@ -31,6 +31,6 @@
 #define CFG_TUH_ENUMERATION_BUFSIZE 256
 
 // PIO-USB配置 - 只用于主机端
-#define BOARD_TUH_RHPORT          1  // RP2040 PIO-USB使用端口1
+#define BOARD_TUH_RHPORT          0  // RP2040 PIO-USB使用端口0 (GPIO26/27)
 
 #endif

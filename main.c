@@ -88,13 +88,22 @@ void tud_umount_cb(void) {
 void core1_main() {
     printf("Core1: Starting USB host initialization\n");
     
+    // 等待USB设备栈完全初始化
+    printf("Core1: Waiting for USB device stack to stabilize...\n");
+    sleep_ms(1000);
+    
     // 初始化HID主机模块
+    printf("Core1: Initializing HID host module...\n");
     hid_host_init();
+    
+    // 等待PIO-USB硬件完全启动
+    printf("Core1: Waiting for PIO-USB hardware to initialize...\n");
+    sleep_ms(1000);
     
     // 开启手柄电源
     printf("Core1: Enabling gamepad power on GPIO23\n");
     gpio_put(POWER_PIN, 1);
-    sleep_ms(500); // 等待电源稳定
+    sleep_ms(800); // 等待电源稳定
     
     printf("Core1: Entering USB host task loop\n");
     
