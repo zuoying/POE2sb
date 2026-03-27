@@ -22,7 +22,7 @@ uint8_t const desc_device[] = {
     0x01        // bNumConfigurations: 配置数量
 };
 
-// XInput HID报告描述符（20字节，Microsoft标准格式）
+// XInput HID报告描述符（符合Microsoft XInput标准，20字节报告）
 uint8_t const desc_hid_report[] = {
     0x05, 0x01,        // Usage Page (Generic Desktop)
     0x09, 0x05,        // Usage (Game Pad)
@@ -31,20 +31,19 @@ uint8_t const desc_hid_report[] = {
     // 报告ID (1字节) - XInput使用0x00
     0x85, 0x00,        //   Report ID (0)
     
-    // 按钮 (16位 = 2字节)
-    0x05, 0x09,        //   Usage Page (Button)
-    0x19, 0x01,        //   Usage Minimum (Button 1)
-    0x29, 0x10,        //   Usage Maximum (Button 16)
+    // 按钮 (16位 = 2字节) - XInput标准格式
+    0x09, 0x01,        //   Usage (Pointer) - 实际上XInput使用直接按钮定义
     0x15, 0x00,        //   Logical Minimum (0)
     0x25, 0x01,        //   Logical Maximum (1)
+    0x35, 0x00,        //   Physical Minimum (0)
+    0x45, 0x01,        //   Physical Maximum (1)
     0x75, 0x01,        //   Report Size (1)
     0x95, 0x10,        //   Report Count (16)
     0x81, 0x02,        //   Input (Data,Var,Abs)
     
     // 左右扳机 (2字节)
-    0x05, 0x01,        //   Usage Page (Generic Desktop)
-    0x09, 0x33,        //   Usage (Rx) - 左扳机
-    0x09, 0x34,        //   Usage (Ry) - 右扳机
+    0x09, 0x32,        //   Usage (Z) - 左扳机
+    0x09, 0x35,        //   Usage (Rz) - 右扳机
     0x15, 0x00,        //   Logical Minimum (0)
     0x25, 0xFF,        //   Logical Maximum (255)
     0x35, 0x00,        //   Physical Minimum (0)
@@ -54,29 +53,44 @@ uint8_t const desc_hid_report[] = {
     0x81, 0x02,        //   Input (Data,Var,Abs)
     
     // 左摇杆 X/Y (4字节 = 2个16位值)
-    0x05, 0x01,        //   Usage Page (Generic Desktop)
     0x09, 0x30,        //   Usage (X)
     0x09, 0x31,        //   Usage (Y)
     0x16, 0x00, 0x80,  //   Logical Minimum (-32768)
     0x26, 0xFF, 0x7F,  //   Logical Maximum (32767)
+    0x35, 0x00,        //   Physical Minimum (0)
+    0x46, 0xFF, 0x7F,  //   Physical Maximum (32767)
     0x75, 0x10,        //   Report Size (16)
     0x95, 0x02,        //   Report Count (2)
     0x81, 0x02,        //   Input (Data,Var,Abs)
     
     // 右摇杆 X/Y (4字节 = 2个16位值)
-    0x05, 0x01,        //   Usage Page (Generic Desktop)
-    0x09, 0x32,        //   Usage (Z)
-    0x09, 0x35,        //   Usage (Rz)
+    0x09, 0x33,        //   Usage (Rx)
+    0x09, 0x34,        //   Usage (Ry)
     0x16, 0x00, 0x80,  //   Logical Minimum (-32768)
     0x26, 0xFF, 0x7F,  //   Logical Maximum (32767)
+    0x35, 0x00,        //   Physical Minimum (0)
+    0x46, 0xFF, 0x7F,  //   Physical Maximum (32767)
     0x75, 0x10,        //   Report Size (16)
     0x95, 0x02,        //   Report Count (2)
     0x81, 0x02,        //   Input (Data,Var,Abs)
     
-    // 保留字段 (6字节)
+    // D-pad (方向键) - 在XInput中，D-pad是按钮的一部分
+    // 实际上D-pad已经包含在按钮中，这里添加一个占位符
+    0x05, 0x01,        //   Usage Page (Generic Desktop)
+    0x09, 0x39,        //   Usage (Hat switch)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x07,        //   Logical Maximum (7)
+    0x35, 0x00,        //   Physical Minimum (0)
+    0x46, 0x3B, 0x01,  //   Physical Maximum (315)
+    0x65, 0x14,        //   Unit (English Rotation)
+    0x75, 0x04,        //   Report Size (4)
+    0x95, 0x01,        //   Report Count (1)
+    0x81, 0x02,        //   Input (Data,Var,Abs)
+    
+    // 填充 (1字节) 使总大小为20字节
     0x75, 0x08,        //   Report Size (8)
-    0x95, 0x06,        //   Report Count (6)
-    0x81, 0x03,        //   Input (Constant,Var,Abs)
+    0x95, 0x01,        //   Report Count (1)
+    0x81, 0x01,        //   Input (Constant)
     
     0xC0               // End Collection
 };
@@ -85,7 +99,7 @@ uint8_t const desc_hid_report[] = {
 uint8_t const desc_configuration[] = {
     // 配置描述符 (9 bytes)
     9, 0x02,                      // 配置描述符类型 (0x02)
-    59, 0,                        // 配置总长度 (little-endian: 59 = 0x3B)
+    69, 0,                        // 配置总长度 (little-endian: 69 = 0x45)
     0x02,                         // 接口数量 (2个接口)
     0x01,                         // 配置值
     0x00,                         // 字符串索引
@@ -100,7 +114,7 @@ uint8_t const desc_configuration[] = {
     0x01,                         // 端点数量
     0x03,                         // 接口类 (HID)
     0x00,                         // 接口子类
-    0x00,                         // 接口协议
+    0x01,                         // 接口协议 (HID_BOOT_PROTOCOL_KEYBOARD 但实际上游戏手柄使用0x01)
     0x00,                         // 字符串索引
     
     // HID描述符 (9 bytes)
@@ -109,7 +123,7 @@ uint8_t const desc_configuration[] = {
     0x00,                         // 国家代码
     0x01,                         // 描述符数量
     0x22,                         // 报告描述符类型 (0x22)
-    61, 0,                        // 报告描述符长度 (61字节)
+    66, 0,                        // 报告描述符长度 (66字节)
     
     // 端点描述符 (7 bytes)
     7, 0x05,                      // 端点描述符类型 (0x05)
@@ -126,7 +140,7 @@ uint8_t const desc_configuration[] = {
     0x01,                         // 端点数量
     0x03,                         // 接口类 (HID)
     0x00,                         // 接口子类
-    0x00,                         // 接口协议
+    0x01,                         // 接口协议 (与接口0相同，让Windows识别为游戏手柄)
     0x00,                         // 字符串索引
     
     // HID描述符 (9 bytes)
@@ -135,7 +149,7 @@ uint8_t const desc_configuration[] = {
     0x00,                         // 国家代码
     0x01,                         // 描述符数量
     0x22,                         // 报告描述符类型 (0x22)
-    61, 0,                        // 报告描述符长度 (61字节)
+    66, 0,                        // 报告描述符长度 (66字节)
     
     // 端点描述符 (7 bytes)
     7, 0x05,                      // 端点描述符类型 (0x05)
@@ -155,7 +169,7 @@ uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
 }
 
 // HID报告描述符长度
-#define DESC_HID_REPORT_LEN 61
+#define DESC_HID_REPORT_LEN 66
 uint16_t const desc_hid_report_len = DESC_HID_REPORT_LEN;
 
 // HID报告描述符回调（支持双接口）
@@ -164,11 +178,7 @@ uint8_t const* tud_hid_descriptor_report_cb(uint8_t itf) {
     return desc_hid_report;
 }
 
-// HID报告发送函数
-bool send_xinput_report(uint8_t itf, const xinput_report_t* report) {
-    if (itf >= 2) return false;
-    return tud_hid_report(itf, report, sizeof(xinput_report_t));
-}
+
 
 // 字符串描述符
 uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {

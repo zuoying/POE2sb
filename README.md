@@ -109,4 +109,3 @@ build.bat
 ## 参考项目
 - [Pico-PIO-USB](https://github.com/sekigon-gonnoc/Pico-PIO-USB)
 - [OGX-Mini](https://github.com/wiredopposite/OGX-Mini/)
-- 微雪RP2350-USB-A示例项目
