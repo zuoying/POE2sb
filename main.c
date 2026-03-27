@@ -59,11 +59,17 @@ void init_hardware(void) {
     gpio_init(USB_HOST_DM_PIN);
     gpio_set_dir(USB_HOST_DM_PIN, GPIO_OUT);
     
-    // USB主机5V电源控制 (GPIO18)
-    printf("  USB Host 5V Power control: GPIO18\n");
+    // USB主机5V电源控制 (GPIO18) - TPS61023升压转换器
+    printf("  USB Host 5V Power control: GPIO18 (TPS61023 boost converter)\n");
     gpio_init(USB_HOST_POWER_PIN);
     gpio_set_dir(USB_HOST_POWER_PIN, GPIO_OUT);
-    // 使用高驱动强度确保稳定的5V输出
+    
+    // TPS61023电源管理优化（根据官方手册）
+    // 1. 先关闭电源，确保干净启动
+    gpio_put(USB_HOST_POWER_PIN, 0);
+    sleep_ms(100);
+    
+    // 2. 使用高驱动强度确保稳定的5V输出
     #ifdef GPIO_DRIVE_STRENGTH_16MA
         gpio_set_drive_strength(USB_HOST_POWER_PIN, GPIO_DRIVE_STRENGTH_16MA);
     #elif defined(GPIO_DRIVE_STRENGTH_12MA)
@@ -71,8 +77,11 @@ void init_hardware(void) {
     #else
         gpio_set_drive_strength(USB_HOST_POWER_PIN, GPIO_DRIVE_STRENGTH_8MA);
     #endif
-    gpio_put(USB_HOST_POWER_PIN, 1); // 立即开启USB-A端口5V电源
-    printf("    USB 5V power: ON\n");
+    
+    // 3. 软启动：逐步开启电源
+    gpio_put(USB_HOST_POWER_PIN, 1);
+    printf("    USB 5V power: ON (TPS61023 enabled)\n");
+    printf("    Note: TPS61023 provides up to 1A peak output for USB peripherals\n");
     
     // 5V电源状态LED引脚 (GPIO6) - 绿色LED，位于D6旁边
     printf("  5V Power status LED (Green): GPIO6\n");

@@ -1,0 +1,42 @@
+=== Adafruit Feather RP2040 with USB Type A Host 官方手册关键信息 ===
+
+# PIO-USB主机引脚配置：
+- USB Host D+ (Data Plus): GPIO16
+- USB Host D- (Data Minus): GPIO17
+- USB Host 5V Power: GPIO18
+- 5V LED (绿色): 位于D6/GPIO6旁边，指示USB主机5V电源状态
+
+# 其他重要引脚：
+- 板载LED: GPIO25
+- 未使用的GPIO引脚可用于WS2812 LED：GPIO19, GPIO20, GPIO21等
+
+# USB-A端口特性：
+- 使用PIO外设模拟USB主机
+- 5V升压转换器：TPS61023芯片
+- 最大输出：1A峰值
+- 用于为USB外设供电
+
+# 电源管理：
+- 5V电源通过GPIO18控制
+- 5V状态通过GPIO6的绿色LED指示
+
+=== DIY Turbo Button Controller HID Remapper 例程关键信息 ===
+
+# HID手柄例程要点：
+- USB HID设备描述符结构
+- XInput报告格式
+- 按钮映射方案
+- 摇杆校准方法
+- 扳机响应曲线
+
+# 输入数据处理：
+- 原始HID报告解析
+- 数据转换为XInput格式
+- 反作弊偏移算法
+- 模式切换逻辑
+
+# USB通信：
+- 端点配置
+- 报告发送频率
+- 设备枚举流程
+- Windows驱动程序兼容性
