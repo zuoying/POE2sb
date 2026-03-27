@@ -91,14 +91,14 @@ void init_hardware(void) {
     printf("Initializing PIO-USB host pins for Adafruit Feather RP2040 USB-A Host\n");
     
     // USB主机D+ (GPIO16) - 数据正极
-    printf("  USB Host D+ (Data Plus): GPIO16\n");
-    gpio_init(USB_HOST_DP_PIN);
-    gpio_set_dir(USB_HOST_DP_PIN, GPIO_OUT);
+    printf("  USB Host D+ (Data Plus): GPIO16 (managed by PIO-USB)\n");
+    // 重要：GPIO16和GPIO17由PIO-USB程序自动管理
+    // 不要手动初始化这些引脚，否则会干扰PIO-USB操作！
+    // 移除错误的gpio_init()和gpio_set_dir()调用
     
     // USB主机D- (GPIO17) - 数据负极  
-    printf("  USB Host D- (Data Minus): GPIO17\n");
-    gpio_init(USB_HOST_DM_PIN);
-    gpio_set_dir(USB_HOST_DM_PIN, GPIO_OUT);
+    printf("  USB Host D- (Data Minus): GPIO17 (managed by PIO-USB)\n");
+    // PIO-USB会自动配置这些引脚，不要手动干预
     
     // USB主机5V电源控制 (GPIO18) - TPS61023升压转换器（最大1A输出）
     printf("  USB Host 5V Power control: GPIO18 (TPS61023 boost converter, 1A peak)\n");

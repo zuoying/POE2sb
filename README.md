@@ -1,21 +1,21 @@
 # POE2sb Gamepad Synchronizer
 
 ## 项目概述
-本项目为Waveshare RP2350-USB-A板开发固件，读取GameSir T4 Kaleid有线HID手柄并输出双虚拟XInput控制器到PC。
+本项目为adafruit-feather-rp2040-with-usb-type-a-host开发固件，读取GameSir T4 Kaleid有线HID手柄并输出双虚拟XInput控制器到PC。
 
 ## 主要特性
 - 读取GameSir T4 Kaleid控制器（VID:0x3537, PID:0x100E）
 - 输出两个虚拟XInput控制器
 - 三种工作模式：SYNC（同步）、MAIN（仅主）、SUB（仅副）
-- WS2812 LED状态指示和自动亮度调节
+- LED状态指示
 - 反作弊随机输入偏移（摇杆±4，扳机±2，延迟1-6ms）仅应用于虚拟控制器2
-- 通过Menu+View按钮组合（长按1秒）切换模式
+- 通过Menu+View按钮组合切换模式
 
 ## 架构设计
 - Core0：USB设备模式（双XInput接口）
 - Core1：USB主机模式（HID手柄读取）
 - HID→XInput转换，自动检测报告格式
-- RP2350双核心操作
+- RP2040双核心操作
 
 ## 文件结构
 ```
@@ -41,28 +41,15 @@ POE2sb/
 ```
 
 ## 构建方法
-### Linux/MacOS
-```bash
-chmod +x build.sh
-./build.sh
-```
+### github远程仓库编译
 
-### Windows
-```cmd
-build.bat
-```
+
+
 
 ## 使用方法
-1. 将GameSir手柄连接到RP2350板的USB-A端口
-2. 将RP2350板的USB-C端口连接到电脑
-3. LED状态指示：
-   - 蓝色：系统初始化中
-   - 青色：系统就绪，等待手柄连接
-   - 绿色：手柄已连接
-   - 绿色：SYNC模式（同步）
-   - 蓝色：MAIN模式（仅主控制器）
-   - 红色：SUB模式（仅副控制器）
-4. 长按Menu+View按钮1秒切换模式
+1. 将GameSir手柄连接到RP2040板的USB-A端口
+2. 将RP2040板的USB-C端口连接到电脑
+3. 同时按Menu+View按钮切换模式
 
 ## 反作弊特性
 - 随机偏移仅应用于虚拟控制器2
@@ -71,43 +58,16 @@ build.bat
 - 延迟偏移：1-6毫秒
 - 仅在SYNC和SUB模式下生效
 
-## 技术细节
-- USB描述符配置为双HID接口（CFG_TUD_HID=2）
-- 自动检测XInput（19-20字节）和DInput（8字节）报告格式
-- PIO-USB支持同时的主机和设备操作
-- WS2812 LED通过PIO控制
+
 
 ## 硬件要求
-- Waveshare RP2350-USB-A板
 - GameSir T4 Kaleid有线手柄
 - USB-C线（连接到PC）
 - USB-A线（连接到手柄）
-- WS2812 LED（连接到GPIO16）
-
-## 许可证和安全
-本项目仅供学习和研究用途。使用时请遵守：
-- 游戏服务条款和最终用户许可协议
-- 反作弊系统政策
-- 当地法律法规
 
 ## GitHub Desktop 使用
 为了更方便地推送代码，推荐使用GitHub Desktop：
 
-### 快速开始
-1. 运行构建和推送脚本：`build_and_push.bat`
-2. 打开GitHub Desktop查看和提交更改
-3. 点击"Push origin"按钮推送代码
-
-### 详细指南
-- 查看 `GITHUB_DESKTOP_GUIDE.md` 获取完整教程
-- 使用 `quick_push.ps1` 快速操作
-
-## 支持与贡献
-如有问题或建议，请：
-1. 查看串口调试输出（115200波特率）
-2. 检查硬件连接
-3. 参考技术文档
-4. 在项目仓库中提交问题
 
 ## 项目状态
 ✅ 完成代码架构设计和实现  
@@ -117,7 +77,7 @@ build.bat
 ✅ 完成模式管理模块  
 ✅ 完成构建脚本和文档  
 ⚠️ 需要在实际硬件上测试验证
-
+手柄连接开发板usb后仅显示充电指示灯，无连接指示灯（直连PC会亮连接指示灯）
 ## 参考项目
 - [Pico-PIO-USB](https://github.com/sekigon-gonnoc/Pico-PIO-USB)
 - [OGX-Mini](https://github.com/wiredopposite/OGX-Mini/)
