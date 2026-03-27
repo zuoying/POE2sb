@@ -42,65 +42,45 @@ void print_system_info(void) {
     printf("===========================\n");
 }
 
-// 优化电源管理：根据TPS61023规格控制升压转换器
-static void optimize_power_management(void) {
-    printf("Optimizing TPS61023 power management (1A boost converter)...\n");
-    printf("  TPS61023 Specs: 0.5-5.5V input, 5.2V output, 1A max, 1MHz switching\n");
+// 简化电源管理：根据OGX-Mini配置和Adafruit Feather原理图
+static void enable_usb_host_power(void) {
+    printf("Enabling USB host 5V power via TPS61023 (GPIO18)...\n");
+    printf("  According to OGX-Mini config and Adafruit schematic:\n");
+    printf("  - VCC_EN_PIN = GPIO18 (Active HIGH)\n");
+    printf("  - TPS61023 boost converter provides 5.2V output\n");
+    printf("  - Max current: 1A peak\n");
     
-    // 根据数据手册：使能引脚拉低可禁用输出（真断接功能）
-    // 1. 确保电源干净关闭
-    printf("  1. Ensuring clean shutdown (EN pin LOW)\n");
-    gpio_put(USB_HOST_POWER_PIN, 0);
-    sleep_ms(100);  // 确保完全关断
-    
-    // 2. 设置GPIO属性
-    #ifdef GPIO_SLEW_RATE_LIMIT
-        gpio_set_slew_rate(USB_HOST_POWER_PIN, GPIO_SLEW_RATE_LIMIT);
-    #endif
-    
-    #ifdef GPIO_INPUT_ENABLE
-        gpio_disable_input(USB_HOST_POWER_PIN);
-    #endif
-    
-    // 3. 根据Adafruit产品页面：需要适当延迟确保稳定
-    printf("  2. Waiting for caps to discharge\n");
-    sleep_ms(50);
-    
-    // 4. 优化启动序列 - 避免浪涌电流
-    printf("  3. Optimized startup sequence:\n");
-    
-    // 方法A：直接开启（TPS61023内置软启动）
-    printf("    Method A: Direct enable (TPS61023 has internal soft-start)\n");
+    // 根据OGX-Mini和Adafruit设计，GPIO18高电平启用TPS61023
+    // 简单直接启用，TPS61023内置软启动和过流保护
     gpio_put(USB_HOST_POWER_PIN, 1);
     
-    // 5. 等待TPS61023完全启动
-    // 根据规格：启动时间依赖于输入电压，但通常很快
-    printf("  4. Waiting for TPS61023 to stabilize\n");
-    sleep_ms(150);  // 保守估计，给升压转换器足够时间
+    // 等待升压转换器完全启动
+    printf("  Waiting for TPS61023 to stabilize (50ms)...\n");
+    sleep_ms(50);
     
-    printf("  TPS61023 enabled, 5.2V output should be available\n");
-    printf("  Note: 1A peak output for USB peripherals\n");
+    printf("  USB host 5V power should now be available\n");
 }
 
-// 检查5V电源状态
+// 检查5V电源状态 - 根据OGX-Mini配置
 static bool check_5v_power_status(void) {
-    // 读取GPIO6状态（5V电源状态检测）
-    sleep_ms(10); // 等待稳定
-    bool status = gpio_get(POWER_STATUS_PIN);
+    // 根据OGX-Mini的Config.h，LED指示灯使用GPIO13
+    // 但我们可能没有连接到正确的外部检测引脚
+    // 这里我们简单检查GPIO18（VCC_EN）是否已设置为高电平
     
-    // 如果状态异常，打印详细信息
-    if (!status) {
-        printf("  5V power status check: FAIL (LOW)\n");
-        printf("  Possible causes:\n");
-        printf("  1. TPS61023 not fully enabled\n");
-        printf("  2. Overcurrent protection triggered\n");
-        printf("  3. Power supply insufficient\n");
-        printf("  4. GPIO6 configuration incorrect\n");
+    printf("Checking USB host power status...\n");
+    
+    // 检查VCC使能引脚状态
+    bool vcc_enabled = gpio_get(USB_HOST_POWER_PIN);
+    printf("  VCC_EN pin (GPIO18): %s\n", vcc_enabled ? "HIGH" : "LOW");
+    
+    if (vcc_enabled) {
+        printf("  Status: USB host 5V power SHOULD be available\n");
+        printf("  Note: Actual power availability depends on TPS61023 and input voltage\n");
+        return true;
     } else {
-        printf("  5V power status check: OK (HIGH)\n");
+        printf("  Status: USB host 5V power is DISABLED (GPIO18 LOW)\n");
+        return false;
     }
-    
-    return status;
 }
 
 // 初始化硬件
@@ -128,8 +108,8 @@ void init_hardware(void) {
     // 根据手册：TPS61023使能引脚连接到GPIO18，用于手动电源控制
     printf("    TPS61023 Boost Converter Initialization:\n");
     
-    // 调用优化的电源管理函数
-    optimize_power_management();
+    // 启用USB主机5V电源
+    enable_usb_host_power();
     
     // 检查5V电源状态
     bool power_ok = check_5v_power_status();
@@ -139,35 +119,19 @@ void init_hardware(void) {
            power_ok ? "fully enabled" : "may need reset");
     printf("    Note: Power management allows hard-reset via GPIO18 control\n");
     
-    // GPIO6功能验证 - 根据描述"开发板绿灯常亮"，这可能不是电源状态引脚
-    // 尝试不同的配置来诊断GPIO6的实际功能
-    printf("  GPIO6 function testing...\n");
+    // GPIO6配置 - 根据OGX-Mini配置，他们使用GPIO13作为LED
+    // GPIO6可能不是电源状态引脚，我们将其配置为输入用于诊断
+    printf("  GPIO6 configuration (diagnostic only):\n");
     
-    // 测试1：作为输入读取当前状态
+    // 简单配置为输入，上拉
     gpio_init(POWER_STATUS_PIN);
     gpio_set_dir(POWER_STATUS_PIN, GPIO_IN);
     gpio_pull_up(POWER_STATUS_PIN);
     sleep_ms(10);
-    bool status_as_input = gpio_get(POWER_STATUS_PIN);
-    printf("    As input (pull-up): %s\n", status_as_input ? "HIGH" : "LOW");
     
-    // 测试2：作为输出尝试控制
-    gpio_set_dir(POWER_STATUS_PIN, GPIO_OUT);
-    gpio_put(POWER_STATUS_PIN, 0);
-    sleep_ms(10);
-    printf("    As output (LOW): set\n");
-    
-    sleep_ms(50);
-    gpio_put(POWER_STATUS_PIN, 1);
-    sleep_ms(10);
-    printf("    As output (HIGH): set\n");
-    
-    // 最终配置：根据实际需求选择
-    // 暂时保持为输入模式，上拉，用于后续诊断
-    gpio_set_dir(POWER_STATUS_PIN, GPIO_IN);
-    gpio_pull_up(POWER_STATUS_PIN);
-    
-    printf("  GPIO6 configured as input with pull-up for diagnostics\n");
+    bool gpio6_state = gpio_get(POWER_STATUS_PIN);
+    printf("    GPIO6 state: %s\n", gpio6_state ? "HIGH" : "LOW");
+    printf("    Note: GPIO6 may not be connected to power status indicator\n");
     
     // 初始化板载LED引脚 (GPIO25) - 用于指示电源状态
     printf("Initializing builtin LED on GPIO25 (power indicator)\n");
@@ -183,9 +147,11 @@ void init_hardware(void) {
     printf("  WS2812 LED initialized\n");
     
     printf("Hardware initialization complete\n");
-    printf("USB Host 5V power: %s, Status: %s\n", 
-           gpio_get(USB_HOST_POWER_PIN) ? "ON" : "OFF", 
-           gpio_get(POWER_STATUS_PIN) ? "OK" : "FAIL");
+    printf("USB Host Configuration:\n");
+    printf("  D+ pin: GPIO%d, D- pin: GPIO%d\n", USB_HOST_DP_PIN, USB_HOST_DM_PIN);
+    printf("  5V power control: GPIO%d (TPS61023 EN) - %s\n", 
+           USB_HOST_POWER_PIN, gpio_get(USB_HOST_POWER_PIN) ? "ENABLED" : "DISABLED");
+    printf("  GPIO6 state: %s (diagnostic only)\n", gpio_get(POWER_STATUS_PIN) ? "HIGH" : "LOW");
 }
 
 // USB设备挂载回调函数
@@ -265,9 +231,9 @@ void core1_main() {
             
             if (heartbeat >= 30) { // 每30秒详细报告一次
                 printf("Core1: USB Host Status Report\n");
-                printf("  TPS61023 enabled: GPIO18 HIGH\n");
+                printf("  TPS61023 enabled: GPIO18 %s\n", gpio_get(USB_HOST_POWER_PIN) ? "HIGH" : "LOW");
                 printf("  Board LED: GPIO25 %s\n", gpio_get(BUILTIN_LED_PIN) ? "ON" : "OFF");
-                printf("  GPIO6 state: %s\n", gpio_get(POWER_STATUS_PIN) ? "HIGH" : "LOW");
+                printf("  GPIO6 (诊断): %s\n", gpio_get(POWER_STATUS_PIN) ? "HIGH" : "LOW");
                 printf("  System running for: %lu ms\n", to_ms_since_boot(get_absolute_time()));
                 heartbeat = 0;
             }
@@ -320,18 +286,20 @@ int main(void) {
     
     // 测试GPIO状态
     printf("GPIO Status:\n");
-    printf("  GPIO18 (TPS61023 EN): %s\n", gpio_get(USB_HOST_POWER_PIN) ? "HIGH" : "LOW");
-    printf("  GPIO6 (POWER STATUS): %s\n", gpio_get(POWER_STATUS_PIN) ? "HIGH" : "LOW");
-    printf("  GPIO25 (Board LED): %s\n", gpio_get(BUILTIN_LED_PIN) ? "HIGH" : "LOW");
+    printf("  GPIO18 (TPS61023 EN - VCC控制): %s\n", gpio_get(USB_HOST_POWER_PIN) ? "HIGH" : "LOW");
+    printf("  GPIO16 (USB Host D+): configured for PIO-USB\n");
+    printf("  GPIO17 (USB Host D-): configured for PIO-USB\n");
+    printf("  GPIO6 (诊断引脚): %s\n", gpio_get(POWER_STATUS_PIN) ? "HIGH" : "LOW");
+    printf("  GPIO25 (板载LED): %s\n", gpio_get(BUILTIN_LED_PIN) ? "HIGH" : "LOW");
     
     // 测试电源管理
     printf("Power Management Status:\n");
     printf("  TPS61023 should be providing 5.2V output\n");
     printf("  Max current: 1A peak (depends on input voltage)\n");
     
-    // 设置系统时钟
-    printf("\nSetting system clock to 120MHz\n");
-    set_sys_clock_khz(120000, true);
+    // 设置系统时钟 - 根据OGX-Mini配置，PIO-USB需要240MHz
+    printf("\nSetting system clock to 240MHz (PIO-USB requirement)\n");
+    set_sys_clock_khz(240000, true);
     
     // 初始化模式管理器
     mode_manager_init();

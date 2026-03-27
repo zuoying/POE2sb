@@ -90,6 +90,18 @@ build.bat
 - 反作弊系统政策
 - 当地法律法规
 
+## GitHub Desktop 使用
+为了更方便地推送代码，推荐使用GitHub Desktop：
+
+### 快速开始
+1. 运行构建和推送脚本：`build_and_push.bat`
+2. 打开GitHub Desktop查看和提交更改
+3. 点击"Push origin"按钮推送代码
+
+### 详细指南
+- 查看 `GITHUB_DESKTOP_GUIDE.md` 获取完整教程
+- 使用 `quick_push.ps1` 快速操作
+
 ## 支持与贡献
 如有问题或建议，请：
 1. 查看串口调试输出（115200波特率）
