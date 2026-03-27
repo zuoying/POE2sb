@@ -32,6 +32,14 @@ jobs:
         git submodule update --init --force --recursive
         echo "PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk" >> $GITHUB_ENV
 
+    - name: Install Python
+      run: sudo apt-get install -y python3
+
+    - name: Get TinyUSB Dependencies
+      run: |
+        cd $PICO_SDK_PATH/lib/tinyusb
+        python3 tools/get_deps.py rp2040
+
     - name: Configure CMake
       run: |
         mkdir build
