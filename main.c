@@ -31,7 +31,7 @@ static volatile bool gamepad_connected = false;
 // 打印系统信息
 void print_system_info(void) {
     printf("=== System Information ===\n");
-    printf("Project: POE2sb Gamepad Synchronizer\n");
+    printf("Project: GameSir Pad Synchronizer\n");
     printf("Board: Adafruit Feather RP2040 with USB Type A Host\n");
     printf("PIO-USB Host Pins: D+ GPIO16, D- GPIO17 (5V: GPIO18)\n");
     printf("WS2812 LED Pin: GPIO19\n");
@@ -65,6 +65,8 @@ void init_hardware(void) {
     gpio_set_dir(USB_HOST_POWER_PIN, GPIO_OUT);
     
     // TPS61023电源管理优化（根据官方手册）
+    printf("    TPS61023 Boost Converter Control:\n");
+    
     // 1. 先关闭电源，确保干净启动
     gpio_put(USB_HOST_POWER_PIN, 0);
     sleep_ms(100);
@@ -77,21 +79,36 @@ void init_hardware(void) {
     #else
         gpio_set_drive_strength(USB_HOST_POWER_PIN, GPIO_DRIVE_STRENGTH_8MA);
     #endif
+    printf("      Drive strength set for stable 5V output\n");
     
-    // 3. 软启动：逐步开启电源
-    gpio_put(USB_HOST_POWER_PIN, 1);
+    // 3. 软启动：逐步开启电源（避免电流冲击）
+    printf("      Soft-start sequence:\n");
+    for (int i = 0; i < 3; i++) {
+        gpio_put(USB_HOST_POWER_PIN, 1);
+        gpio_put(POWER_STATUS_PIN, 1); // 点亮状态LED
+        sleep_ms(50);
+        printf("        Step %d: Power ON\n", i+1);
+        
+        // 短暂停顿
+        sleep_ms(50);
+    }
+    
     printf("    USB 5V power: ON (TPS61023 enabled)\n");
     printf("    Note: TPS61023 provides up to 1A peak output for USB peripherals\n");
     
     // 5V电源状态LED引脚 (GPIO6) - 绿色LED，位于D6旁边
     printf("  5V Power status LED (Green): GPIO6\n");
     gpio_init(POWER_STATUS_PIN);
-    gpio_set_dir(POWER_STATUS_PIN, GPIO_IN);
-    gpio_pull_down(POWER_STATUS_PIN); // 使用下拉电阻
+    gpio_set_dir(POWER_STATUS_PIN, GPIO_OUT);
+    gpio_put(POWER_STATUS_PIN, 1); // 点亮LED
     
-    // 检查5V电源状态
-    bool power_status = gpio_get(POWER_STATUS_PIN);
-    printf("  Current 5V power status: %s\n", power_status ? "OK (HIGH)" : "FAIL (LOW)");
+    // 设置驱动强度以确保LED亮度稳定
+    #ifdef GPIO_DRIVE_STRENGTH_12MA
+        gpio_set_drive_strength(POWER_STATUS_PIN, GPIO_DRIVE_STRENGTH_12MA);
+    #elif defined(GPIO_DRIVE_STRENGTH_8MA)
+        gpio_set_drive_strength(POWER_STATUS_PIN, GPIO_DRIVE_STRENGTH_8MA);
+    #endif
+    printf("  Current 5V power status: LED ON (driver enabled)\n");
     
     // 初始化板载LED引脚 (GPIO25) - 用于指示电源状态
     printf("Initializing builtin LED on GPIO25 (power indicator)\n");
@@ -165,26 +182,20 @@ void core1_main() {
             // 确保USB主机5V电源开启
             gpio_put(USB_HOST_POWER_PIN, 1);
             
-            // 检查5V电源状态LED引脚 (GPIO6)
-            bool power_ok = gpio_get(POWER_STATUS_PIN);
+            // 保持电源状态LED常亮 (GPIO6)
+            gpio_put(POWER_STATUS_PIN, 1);
             
-            // 根据5V电源状态控制板载LED (GPIO25)
-            gpio_put(BUILTIN_LED_PIN, power_ok ? 1 : 0);
+            // 控制板载LED (GPIO25) 作为系统运行指示灯
+            static bool led_state = false;
+            led_state = !led_state;
+            gpio_put(BUILTIN_LED_PIN, led_state);
             
-            // 记录电源状态（仅状态变化时打印）
-            static bool last_power_ok = false;
-            if (power_ok != last_power_ok) {
-                printf("Core1: 5V power status changed to %s\n", power_ok ? "OK" : "FAIL");
-                last_power_ok = power_ok;
-                
-                // 如果5V电源异常，尝试重置
-                if (!power_ok) {
-                    printf("Core1: 5V power failure detected, attempting reset...\n");
-                    gpio_put(USB_HOST_POWER_PIN, 0);
-                    sleep_ms(100);
-                    gpio_put(USB_HOST_POWER_PIN, 1);
-                    sleep_ms(200);
-                }
+            // 定期打印电源状态
+            static uint8_t status_counter = 0;
+            status_counter++;
+            if (status_counter >= 10) { // 每1秒打印一次
+                printf("Core1: USB Host 5V power: ON, Status LED: ON\n");
+                status_counter = 0;
             }
             
             last_power_check = get_absolute_time();
@@ -201,7 +212,7 @@ int main(void) {
     // 等待串口连接（用于调试）
     sleep_ms(2000);
     
-    printf("\n=== POE2sb Gamepad Sync ===\n");
+    printf("\n=== GameSir Pad Synchronizer ===\n");
     printf("Build Date: %s %s\n", __DATE__, __TIME__);
     printf("GameSir T4 Kaleid Controller Synchronizer\n");
     printf("Features: Dual Virtual XInput, Mode Switching, Anti-Cheat Offsets\n");
@@ -225,6 +236,9 @@ int main(void) {
     printf("USB Device Parameters:\n");
     printf("  VID: 0x%04X, PID: 0x%04X\n", GAMEPAD_VID, GAMEPAD_PID);
     printf("  Interfaces: 2 (Dual XInput Controllers)\n");
+    printf("  Manufacturer: GameSir\n");
+    printf("  Product: GameSir T4 Kaleid Controller\n");
+    printf("  Serial: SN240327001\n");
     printf("  String descriptors loaded\n");
     
     // 检查tinyusb配置

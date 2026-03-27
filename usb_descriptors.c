@@ -191,13 +191,13 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     
     switch (index) {
         case 1:  // 制造商
-            str = "POE2sb";
+            str = "GameSir";
             break;
         case 2:  // 产品名称
-            str = "Xbox 360 Controller";
+            str = "GameSir T4 Kaleid Controller";
             break;
         case 3:  // 序列号
-            str = "123456";
+            str = "SN240327001";
             break;
         default:
             return NULL;
