@@ -42,6 +42,56 @@ void print_system_info(void) {
     printf("===========================\n");
 }
 
+// 优化电源管理：根据手册控制TPS61023升压转换器
+static void optimize_power_management(void) {
+    printf("Optimizing TPS61023 power management (1A boost converter)...\n");
+    
+    // 确保电源干净关闭
+    gpio_put(USB_HOST_POWER_PIN, 0);
+    sleep_ms(200);
+    
+    // 高级软启动序列 - 避免电流冲击
+    printf("  Advanced soft-start sequence for TPS61023:\n");
+    for (int i = 0; i < 10; i++) {
+        // PWM式软启动：逐渐增加占空比
+        gpio_put(USB_HOST_POWER_PIN, 1);
+        sleep_ms(5 + i * 2);  // 逐渐增加开启时间
+        gpio_put(USB_HOST_POWER_PIN, 0);
+        sleep_ms(10 - i);     // 逐渐减少关闭时间
+        
+        if (i % 2 == 0) {
+            printf("    Step %d/10\n", i + 1);
+        }
+    }
+    
+    // 最终开启电源
+    gpio_put(USB_HOST_POWER_PIN, 1);
+    sleep_ms(300); // 等待升压转换器完全稳定
+    
+    printf("  TPS61023 fully enabled, 5V output should be stable\n");
+}
+
+// 检查5V电源状态
+static bool check_5v_power_status(void) {
+    // 读取GPIO6状态（5V电源状态检测）
+    sleep_ms(10); // 等待稳定
+    bool status = gpio_get(POWER_STATUS_PIN);
+    
+    // 如果状态异常，打印详细信息
+    if (!status) {
+        printf("  5V power status check: FAIL (LOW)\n");
+        printf("  Possible causes:\n");
+        printf("  1. TPS61023 not fully enabled\n");
+        printf("  2. Overcurrent protection triggered\n");
+        printf("  3. Power supply insufficient\n");
+        printf("  4. GPIO6 configuration incorrect\n");
+    } else {
+        printf("  5V power status check: OK (HIGH)\n");
+    }
+    
+    return status;
+}
+
 // 初始化硬件
 void init_hardware(void) {
     printf("Initializing hardware...\n");
@@ -59,63 +109,46 @@ void init_hardware(void) {
     gpio_init(USB_HOST_DM_PIN);
     gpio_set_dir(USB_HOST_DM_PIN, GPIO_OUT);
     
-    // USB主机5V电源控制 (GPIO18) - TPS61023升压转换器
-    printf("  USB Host 5V Power control: GPIO18 (TPS61023 boost converter)\n");
+    // USB主机5V电源控制 (GPIO18) - TPS61023升压转换器（最大1A输出）
+    printf("  USB Host 5V Power control: GPIO18 (TPS61023 boost converter, 1A peak)\n");
     gpio_init(USB_HOST_POWER_PIN);
     gpio_set_dir(USB_HOST_POWER_PIN, GPIO_OUT);
     
-    // TPS61023电源管理优化（根据官方手册）
-    printf("    TPS61023 Boost Converter Control:\n");
+    // 根据手册：TPS61023使能引脚连接到GPIO18，用于手动电源控制
+    printf("    TPS61023 Boost Converter Initialization:\n");
     
-    // 1. 先关闭电源，确保干净启动
-    gpio_put(USB_HOST_POWER_PIN, 0);
-    sleep_ms(100);
+    // 调用优化的电源管理函数
+    optimize_power_management();
     
-    // 2. 使用高驱动强度确保稳定的5V输出
-    #ifdef GPIO_DRIVE_STRENGTH_16MA
-        gpio_set_drive_strength(USB_HOST_POWER_PIN, GPIO_DRIVE_STRENGTH_16MA);
-    #elif defined(GPIO_DRIVE_STRENGTH_12MA)
-        gpio_set_drive_strength(USB_HOST_POWER_PIN, GPIO_DRIVE_STRENGTH_12MA);
-    #else
-        gpio_set_drive_strength(USB_HOST_POWER_PIN, GPIO_DRIVE_STRENGTH_8MA);
-    #endif
-    printf("      Drive strength set for stable 5V output\n");
+    // 检查5V电源状态
+    bool power_ok = check_5v_power_status();
     
-    // 3. 软启动：逐步开启电源（避免电流冲击）
-    printf("      Soft-start sequence:\n");
-    for (int i = 0; i < 3; i++) {
-        gpio_put(USB_HOST_POWER_PIN, 1);
-        gpio_put(POWER_STATUS_PIN, 1); // 点亮状态LED
-        sleep_ms(50);
-        printf("        Step %d: Power ON\n", i+1);
-        
-        // 短暂停顿
-        sleep_ms(50);
-    }
+    printf("    USB 5V power: %s (TPS61023 %s)\n", 
+           power_ok ? "ON" : "OFF/UNSTABLE",
+           power_ok ? "fully enabled" : "may need reset");
+    printf("    Note: Power management allows hard-reset via GPIO18 control\n");
     
-    printf("    USB 5V power: ON (TPS61023 enabled)\n");
-    printf("    Note: TPS61023 provides up to 1A peak output for USB peripherals\n");
+    // 5V电源状态检测引脚 (GPIO6) - 用于检测5V电源状态
+    // 根据手册：5V LED位于USB-A端口后面，应该由电源管理电路控制
+    printf("  5V Power status detection: GPIO6\n");
+    printf("  Note: This pin likely reads 5V power status, not directly controls LED\n");
     
-    // 5V电源状态LED引脚 (GPIO6) - 绿色LED，位于D6旁边
-    printf("  5V Power status LED (Green): GPIO6\n");
+    // 安全初始化：先设置为输入模式，上拉电阻
     gpio_init(POWER_STATUS_PIN);
-    gpio_set_dir(POWER_STATUS_PIN, GPIO_OUT);
-    gpio_put(POWER_STATUS_PIN, 1); // 点亮LED
+    gpio_set_dir(POWER_STATUS_PIN, GPIO_IN);
+    gpio_pull_up(POWER_STATUS_PIN);
     
-    // 设置驱动强度以确保LED亮度稳定
-    #ifdef GPIO_DRIVE_STRENGTH_12MA
-        gpio_set_drive_strength(POWER_STATUS_PIN, GPIO_DRIVE_STRENGTH_12MA);
-    #elif defined(GPIO_DRIVE_STRENGTH_8MA)
-        gpio_set_drive_strength(POWER_STATUS_PIN, GPIO_DRIVE_STRENGTH_8MA);
-    #endif
-    printf("  Current 5V power status: LED ON (driver enabled)\n");
+    // 短暂延迟后读取状态
+    sleep_ms(10);
+    bool power_status = gpio_get(POWER_STATUS_PIN);
+    printf("  Current 5V power status: %s\n", power_status ? "HIGH (OK)" : "LOW (FAIL)");
     
     // 初始化板载LED引脚 (GPIO25) - 用于指示电源状态
     printf("Initializing builtin LED on GPIO25 (power indicator)\n");
     gpio_init(BUILTIN_LED_PIN);
     gpio_set_dir(BUILTIN_LED_PIN, GPIO_OUT);
-    gpio_put(BUILTIN_LED_PIN, power_status ? 1 : 0); // 根据电源状态设置LED
-    printf("  Builtin LED: %s\n", power_status ? "ON" : "OFF");
+    gpio_put(BUILTIN_LED_PIN, 1); // 点亮板载LED表示系统运行
+    printf("  Builtin LED: ON\n");
     
     // 初始化LED管理器（WS2812）- 使用GPIO19
     printf("Initializing WS2812 LED on GPIO19\n");
@@ -182,8 +215,8 @@ void core1_main() {
             // 确保USB主机5V电源开启
             gpio_put(USB_HOST_POWER_PIN, 1);
             
-            // 保持电源状态LED常亮 (GPIO6)
-            gpio_put(POWER_STATUS_PIN, 1);
+            // 读取5V电源状态 (GPIO6) - 根据手册，这是状态检测引脚
+            bool power_ok = gpio_get(POWER_STATUS_PIN);
             
             // 控制板载LED (GPIO25) 作为系统运行指示灯
             static bool led_state = false;
@@ -194,8 +227,18 @@ void core1_main() {
             static uint8_t status_counter = 0;
             status_counter++;
             if (status_counter >= 10) { // 每1秒打印一次
-                printf("Core1: USB Host 5V power: ON, Status LED: ON\n");
+                printf("Core1: USB Host 5V power: ON, Status: %s\n", 
+                       power_ok ? "OK (HIGH)" : "FAIL (LOW)");
                 status_counter = 0;
+                
+                // 如果电源状态异常，尝试重置TPS61023
+                if (!power_ok) {
+                    printf("Core1: 5V power failure detected, resetting TPS61023...\n");
+                    gpio_put(USB_HOST_POWER_PIN, 0);
+                    sleep_ms(100);
+                    gpio_put(USB_HOST_POWER_PIN, 1);
+                    sleep_ms(200);
+                }
             }
             
             last_power_check = get_absolute_time();
