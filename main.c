@@ -13,8 +13,16 @@
 #include "mode_manager.h"
 
 // 硬件引脚定义 - Adafruit Feather RP2040 with USB Type A Host
-#define POWER_PIN 23          // 电源控制引脚 (GPIO23)
-#define POWER_STATUS_PIN 24   // 电源状态检测引脚 (GPIO24)
+// 根据官方PDF手册：
+// USB Host D+ (Data Plus) - GPIO16
+// USB Host D- (Data Minus) - GPIO17  
+// USB Host 5V Power - GPIO18
+// 5V LED (绿色) - 位于D6/GPIO6旁边，指示5V电源状态
+
+#define USB_HOST_DP_PIN 16    // USB主机D+ (Data Plus)
+#define USB_HOST_DM_PIN 17    // USB主机D- (Data Minus) 
+#define USB_HOST_POWER_PIN 18 // USB主机5V电源控制
+#define POWER_STATUS_PIN 6    // 5V电源状态LED引脚 (GPIO6)
 #define BUILTIN_LED_PIN 25    // 板载LED引脚 (GPIO25)
 
 // 全局状态
@@ -25,10 +33,10 @@ void print_system_info(void) {
     printf("=== System Information ===\n");
     printf("Project: POE2sb Gamepad Synchronizer\n");
     printf("Board: Adafruit Feather RP2040 with USB Type A Host\n");
-    printf("PIO-USB Host Pins: D+ GPIO26, D- GPIO27\n");
-    printf("LED Pin: GPIO16\n");
-    printf("Power Control Pin: GPIO23\n");
-    printf("Power Status Pin: GPIO24\n");
+    printf("PIO-USB Host Pins: D+ GPIO16, D- GPIO17 (5V: GPIO18)\n");
+    printf("WS2812 LED Pin: GPIO19\n");
+    printf("USB Host 5V Power Control: GPIO18\n");
+    printf("5V Power Status LED (Green): GPIO6\n");
     printf("Builtin LED Pin: GPIO25\n");
     printf("System Clock: %lu Hz\n", clock_get_hz(clk_sys));
     printf("===========================\n");
@@ -38,32 +46,43 @@ void print_system_info(void) {
 void init_hardware(void) {
     printf("Initializing hardware...\n");
     
-    // 先初始化电源控制，确保USB-A端口有电
-    printf("Initializing power control on GPIO23 (5V output)\n");
-    gpio_init(POWER_PIN);
-    gpio_set_dir(POWER_PIN, GPIO_OUT);
-    // 使用正确的驱动强度常量（根据Pico SDK版本）
-    #ifdef GPIO_DRIVE_STRENGTH_16MA
-        gpio_set_drive_strength(POWER_PIN, GPIO_DRIVE_STRENGTH_16MA);
-    #elif defined(GPIO_DRIVE_STRENGTH_12MA)
-        gpio_set_drive_strength(POWER_PIN, GPIO_DRIVE_STRENGTH_12MA);
-    #else
-        // 默认使用中等驱动强度
-        gpio_set_drive_strength(POWER_PIN, GPIO_DRIVE_STRENGTH_8MA);
-    #endif
-    gpio_put(POWER_PIN, 1); // 立即开启电源，让USB-A端口有电
-    printf("  Power control: GPIO23 set to OUTPUT, HIGH\n");
+    // 初始化PIO-USB主机引脚（根据官方PDF手册）
+    printf("Initializing PIO-USB host pins for Adafruit Feather RP2040 USB-A Host\n");
     
-    // 初始化电源状态检测引脚 (GPIO24)
-    printf("Initializing power status detection on GPIO24\n");
+    // USB主机D+ (GPIO16) - 数据正极
+    printf("  USB Host D+ (Data Plus): GPIO16\n");
+    gpio_init(USB_HOST_DP_PIN);
+    gpio_set_dir(USB_HOST_DP_PIN, GPIO_OUT);
+    
+    // USB主机D- (GPIO17) - 数据负极  
+    printf("  USB Host D- (Data Minus): GPIO17\n");
+    gpio_init(USB_HOST_DM_PIN);
+    gpio_set_dir(USB_HOST_DM_PIN, GPIO_OUT);
+    
+    // USB主机5V电源控制 (GPIO18)
+    printf("  USB Host 5V Power control: GPIO18\n");
+    gpio_init(USB_HOST_POWER_PIN);
+    gpio_set_dir(USB_HOST_POWER_PIN, GPIO_OUT);
+    // 使用高驱动强度确保稳定的5V输出
+    #ifdef GPIO_DRIVE_STRENGTH_16MA
+        gpio_set_drive_strength(USB_HOST_POWER_PIN, GPIO_DRIVE_STRENGTH_16MA);
+    #elif defined(GPIO_DRIVE_STRENGTH_12MA)
+        gpio_set_drive_strength(USB_HOST_POWER_PIN, GPIO_DRIVE_STRENGTH_12MA);
+    #else
+        gpio_set_drive_strength(USB_HOST_POWER_PIN, GPIO_DRIVE_STRENGTH_8MA);
+    #endif
+    gpio_put(USB_HOST_POWER_PIN, 1); // 立即开启USB-A端口5V电源
+    printf("    USB 5V power: ON\n");
+    
+    // 5V电源状态LED引脚 (GPIO6) - 绿色LED，位于D6旁边
+    printf("  5V Power status LED (Green): GPIO6\n");
     gpio_init(POWER_STATUS_PIN);
     gpio_set_dir(POWER_STATUS_PIN, GPIO_IN);
     gpio_pull_down(POWER_STATUS_PIN); // 使用下拉电阻
-    printf("  Power status: GPIO24 set to INPUT with pull-down\n");
     
-    // 检查电源状态
+    // 检查5V电源状态
     bool power_status = gpio_get(POWER_STATUS_PIN);
-    printf("  Current power status: %s\n", power_status ? "OK (HIGH)" : "FAIL (LOW)");
+    printf("  Current 5V power status: %s\n", power_status ? "OK (HIGH)" : "FAIL (LOW)");
     
     // 初始化板载LED引脚 (GPIO25) - 用于指示电源状态
     printf("Initializing builtin LED on GPIO25 (power indicator)\n");
@@ -72,15 +91,15 @@ void init_hardware(void) {
     gpio_put(BUILTIN_LED_PIN, power_status ? 1 : 0); // 根据电源状态设置LED
     printf("  Builtin LED: %s\n", power_status ? "ON" : "OFF");
     
-    // 初始化LED管理器（WS2812）
-    printf("Initializing WS2812 LED on GPIO16\n");
+    // 初始化LED管理器（WS2812）- 使用GPIO19
+    printf("Initializing WS2812 LED on GPIO19\n");
     led_init();
     led_set_state(LED_STATE_INIT);
     printf("  WS2812 LED initialized\n");
     
     printf("Hardware initialization complete\n");
-    printf("Power output: %s, Status: %s\n", 
-           gpio_get(POWER_PIN) ? "ON" : "OFF", 
+    printf("USB Host 5V power: %s, Status: %s\n", 
+           gpio_get(USB_HOST_POWER_PIN) ? "ON" : "OFF", 
            gpio_get(POWER_STATUS_PIN) ? "OK" : "FAIL");
 }
 
@@ -112,10 +131,10 @@ void core1_main() {
     printf("Core1: Waiting for PIO-USB hardware to initialize...\n");
     sleep_ms(1000);
     
-    // 开启手柄电源
-    printf("Core1: Enabling gamepad power on GPIO23\n");
-    gpio_put(POWER_PIN, 1);
-    sleep_ms(800); // 等待电源稳定
+    // 开启手柄电源（已经在init_hardware中开启，这里确保保持开启）
+    printf("Core1: Ensuring USB host 5V power is enabled on GPIO18\n");
+    gpio_put(USB_HOST_POWER_PIN, 1);
+    sleep_ms(500); // 确保电源稳定
     
     printf("Core1: Entering USB host task loop\n");
     
@@ -134,27 +153,27 @@ void core1_main() {
         }
         
         if (absolute_time_diff_us(get_absolute_time(), last_power_check) > 100000) {
-            // 确保电源开启
-            gpio_put(POWER_PIN, 1);
+            // 确保USB主机5V电源开启
+            gpio_put(USB_HOST_POWER_PIN, 1);
             
-            // 检查电源状态引脚 (GPIO24)
+            // 检查5V电源状态LED引脚 (GPIO6)
             bool power_ok = gpio_get(POWER_STATUS_PIN);
             
-            // 根据电源状态控制板载LED (GPIO25)
+            // 根据5V电源状态控制板载LED (GPIO25)
             gpio_put(BUILTIN_LED_PIN, power_ok ? 1 : 0);
             
             // 记录电源状态（仅状态变化时打印）
             static bool last_power_ok = false;
             if (power_ok != last_power_ok) {
-                printf("Core1: Power status changed to %s\n", power_ok ? "OK" : "FAIL");
+                printf("Core1: 5V power status changed to %s\n", power_ok ? "OK" : "FAIL");
                 last_power_ok = power_ok;
                 
-                // 如果电源异常，尝试重置
+                // 如果5V电源异常，尝试重置
                 if (!power_ok) {
-                    printf("Core1: Power failure detected, attempting reset...\n");
-                    gpio_put(POWER_PIN, 0);
+                    printf("Core1: 5V power failure detected, attempting reset...\n");
+                    gpio_put(USB_HOST_POWER_PIN, 0);
                     sleep_ms(100);
-                    gpio_put(POWER_PIN, 1);
+                    gpio_put(USB_HOST_POWER_PIN, 1);
                     sleep_ms(200);
                 }
             }

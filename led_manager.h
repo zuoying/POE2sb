@@ -9,8 +9,9 @@ extern "C" {
 #include <stdbool.h>
 #include "usb_descriptors.h"
 
-// LED引脚定义
-#define LED_PIN 16
+// LED引脚定义 - 使用GPIO19，避免与PIO-USB主机冲突
+// GPIO16-18用于PIO-USB主机 (D+/D-/5V)
+#define LED_PIN 19
 #define LED_FREQ 800000  // 800kHz
 
 // 亮度级别

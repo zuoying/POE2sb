@@ -32,8 +32,9 @@ pico_sdk_init()
 add_compile_definitions(
     PICO_RP2040=1
     CFG_TUH_RPI_PIO_USB=1
-    PIO_USB_HOST_PIN_DM=27
-    PIO_USB_HOST_PIN_DP=26
+    # Adafruit Feather RP2040 USB-A Host引脚（根据官方PDF手册）
+    PIO_USB_HOST_PIN_DP=16  # USB Host D+ (Data Plus) - GPIO16
+    PIO_USB_HOST_PIN_DM=17  # USB Host D- (Data Minus) - GPIO17
     PIO_USB_HOST_PIO_INST=0
     PIO_USB_HOST_SM=0
     # USB设备配置
