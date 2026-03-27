@@ -38,12 +38,8 @@ void print_system_info(void) {
 void init_hardware(void) {
     printf("Initializing hardware...\n");
     
-    // 初始化LED管理器
-    led_init();
-    led_set_state(LED_STATE_INIT);
-    
-    // 初始化5V电源控制
-    printf("Initializing power control on GPIO23\n");
+    // 先初始化电源控制，确保USB-A端口有电
+    printf("Initializing power control on GPIO23 (5V output)\n");
     gpio_init(POWER_PIN);
     gpio_set_dir(POWER_PIN, GPIO_OUT);
     // 使用正确的驱动强度常量（根据Pico SDK版本）
@@ -55,21 +51,37 @@ void init_hardware(void) {
         // 默认使用中等驱动强度
         gpio_set_drive_strength(POWER_PIN, GPIO_DRIVE_STRENGTH_8MA);
     #endif
-    gpio_put(POWER_PIN, 0); // 先关闭电源
+    gpio_put(POWER_PIN, 1); // 立即开启电源，让USB-A端口有电
+    printf("  Power control: GPIO23 set to OUTPUT, HIGH\n");
     
     // 初始化电源状态检测引脚 (GPIO24)
     printf("Initializing power status detection on GPIO24\n");
     gpio_init(POWER_STATUS_PIN);
     gpio_set_dir(POWER_STATUS_PIN, GPIO_IN);
     gpio_pull_down(POWER_STATUS_PIN); // 使用下拉电阻
+    printf("  Power status: GPIO24 set to INPUT with pull-down\n");
     
-    // 初始化板载LED引脚 (GPIO25)
-    printf("Initializing builtin LED on GPIO25\n");
+    // 检查电源状态
+    bool power_status = gpio_get(POWER_STATUS_PIN);
+    printf("  Current power status: %s\n", power_status ? "OK (HIGH)" : "FAIL (LOW)");
+    
+    // 初始化板载LED引脚 (GPIO25) - 用于指示电源状态
+    printf("Initializing builtin LED on GPIO25 (power indicator)\n");
     gpio_init(BUILTIN_LED_PIN);
     gpio_set_dir(BUILTIN_LED_PIN, GPIO_OUT);
-    gpio_put(BUILTIN_LED_PIN, 0); // 初始关闭
+    gpio_put(BUILTIN_LED_PIN, power_status ? 1 : 0); // 根据电源状态设置LED
+    printf("  Builtin LED: %s\n", power_status ? "ON" : "OFF");
     
-    printf("Hardware initialized\n");
+    // 初始化LED管理器（WS2812）
+    printf("Initializing WS2812 LED on GPIO16\n");
+    led_init();
+    led_set_state(LED_STATE_INIT);
+    printf("  WS2812 LED initialized\n");
+    
+    printf("Hardware initialization complete\n");
+    printf("Power output: %s, Status: %s\n", 
+           gpio_get(POWER_PIN) ? "ON" : "OFF", 
+           gpio_get(POWER_STATUS_PIN) ? "OK" : "FAIL");
 }
 
 // USB设备挂载回调函数
@@ -210,6 +222,10 @@ int main(void) {
     tud_init(0);  // 只初始化设备端，避免与Core1的主机端冲突
     printf("USB device stack initialized\n");
     
+    // 初始化XInput设备
+    printf("Initializing XInput device interface...\n");
+    xinput_device_init();
+    
     // 等待USB设备枚举完成
     sleep_ms(1000);
     
@@ -223,6 +239,19 @@ int main(void) {
     
     // 设置系统就绪状态
     led_set_state(LED_STATE_READY);
+    
+    // 等待USB设备被Windows完全识别
+    printf("Waiting for Windows to fully recognize USB device...\n");
+    sleep_ms(2000);
+    
+    // 发送初始XInput报告，让Windows立即识别设备
+    printf("Sending initial XInput report to Windows...\n");
+    xinput_report_t init_report = {0};
+    init_report.report_id = 0x00;
+    // 发送到两个接口
+    xinput_device_send_report(0, &init_report);
+    xinput_device_send_report(1, &init_report);
+    printf("Initial XInput reports sent\n");
     
     // 报告缓冲区
     xinput_report_t main_report = {0};
