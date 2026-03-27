@@ -202,8 +202,16 @@ int main(void) {
     
     // 初始化tinyusb设备栈 - 只初始化设备端（硬件USB）
     printf("Initializing USB device stack (tud_init)...\n");
+    printf("Using custom USB descriptors with VID=0x%04X, PID=0x%04X\n", GAMEPAD_VID, GAMEPAD_PID);
+    
+    // 等待系统稳定
+    sleep_ms(500);
+    
     tud_init(0);  // 只初始化设备端，避免与Core1的主机端冲突
     printf("USB device stack initialized\n");
+    
+    // 等待USB设备枚举完成
+    sleep_ms(1000);
     
     // 启动Core1处理USB主机功能
     printf("Starting Core1 USB host task\n");

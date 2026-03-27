@@ -21,6 +21,11 @@
 #define CFG_TUD_ENABLED           1
 #define CFG_TUD_HID              2  // 支持两个虚拟手柄
 #define CFG_TUD_HID_EP_BUFSIZE    64
+// 强制使用自定义USB描述符，避免Pico SDK默认VID/PID
+#define CFG_TUD_DESC_USE_CDC      0
+#define CFG_TUD_DESC_USE_MSC      0
+#define CFG_TUD_DESC_USE_HID      1
+#define CFG_TUD_DESC_USE_AUDIO    0
 
 // USB主机配置 - 使用PIO-USB (USB-A端口)
 #define CFG_TUH_ENABLED           1

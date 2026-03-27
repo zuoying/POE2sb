@@ -36,6 +36,9 @@ add_compile_definitions(
     PIO_USB_HOST_PIN_DP=26
     PIO_USB_HOST_PIO_INST=0
     PIO_USB_HOST_SM=0
+    # USB设备配置
+    GAMEPAD_VID=0x1209
+    GAMEPAD_PID=0x0001
     # 设备端使用硬件USB控制器，无PIO-USB设备端定义
 )
 
