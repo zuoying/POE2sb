@@ -205,6 +205,8 @@ void core1_main() {
     printf("Core1: Starting USB host initialization\n");
     printf("Core1: PIO-USB Host pins: D+ GPIO%d, D- GPIO%d\n", 
            USB_HOST_DP_PIN, USB_HOST_DM_PIN);
+    printf("Core1: VBUS power control: GPIO%d\n", USB_HOST_POWER_PIN);
+    printf("Core1: Using rhport: %d (configured in tusb_config.h)\n", BOARD_TUH_RHPORT);
     
     // 等待USB设备栈完全初始化
     printf("Core1: Waiting for USB device stack to stabilize...\n");
@@ -213,6 +215,18 @@ void core1_main() {
     // 初始化HID主机模块
     printf("Core1: Initializing HID host module...\n");
     printf("Core1: This will initialize PIO-USB host controller\n");
+    printf("Core1: CPU frequency check: %lu Hz\n", clock_get_hz(clk_sys));
+    
+    // 检查CPU频率是否符合PIO-USB要求
+    uint32_t cpu_hz = clock_get_hz(clk_sys);
+    if (cpu_hz != 120000000UL && cpu_hz != 240000000UL) {
+        printf("Core1: ERROR: CPU frequency %lu Hz is not valid for PIO-USB!\n", cpu_hz);
+        printf("Core1: PIO-USB requires CPU frequency to be 120MHz or 240MHz\n");
+        printf("Core1: USB host may not work correctly!\n");
+    } else {
+        printf("Core1: CPU frequency OK for PIO-USB\n");
+    }
+    
     hid_host_init();
     
     // 等待PIO-USB硬件完全启动
@@ -291,6 +305,18 @@ int main(void) {
     
     // 运行系统诊断
     printf("\n=== Running System Diagnostics ===\n");
+    
+    // 检查CPU时钟频率（PIO-USB要求120MHz或240MHz倍数）
+    uint32_t cpu_hz = clock_get_hz(clk_sys);
+    printf("CPU Clock Check:\n");
+    printf("  Current CPU frequency: %lu Hz\n", cpu_hz);
+    printf("  PIO-USB requirement: multiple of 120MHz\n");
+    if (cpu_hz == 120000000UL || cpu_hz == 240000000UL) {
+        printf("  Result: PASS (valid frequency for PIO-USB)\n");
+    } else {
+        printf("  Result: FAIL (invalid frequency for PIO-USB)\n");
+        printf("  Warning: PIO-USB may not work correctly!\n");
+    }
     
     // 测试GPIO状态
     printf("GPIO Status:\n");

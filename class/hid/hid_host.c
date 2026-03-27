@@ -155,7 +155,7 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
 void hid_host_init(void) {
     // 确保tinyUSB主机模式已初始化
     if (!tuh_inited()) {
-        tuh_init(0); // RP2040 PIO-USB使用端口0 (GPIO26/27)
+        tuh_init(BOARD_TUH_RHPORT); // 使用配置的端口号
     }
     memset(&hid_host, 0, sizeof(hid_host_t));
     memset(_last_report, 0, sizeof(_last_report));
